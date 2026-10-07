@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="description" content="Why the F&amp;O API Studio Chrome extension requests each permission.">
+<title>Permission justifications — F&amp;O API Studio</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px;
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #1b1f23; background: #f6f8fa;
+}
+nav.top {
+  max-width: 880px; margin: 0 auto 14px; display: flex; gap: 18px;
+  flex-wrap: wrap; align-items: baseline; font-size: 14px;
+}
+nav.top a { color: #57606a; text-decoration: none; }
+nav.top a:hover { color: #0969da; text-decoration: underline; }
+nav.top .brand { font-weight: 650; color: #1b1f23; }
+main {
+  max-width: 880px; margin: 0 auto; background: #fff;
+  border: 1px solid #d0d7de; border-radius: 12px; padding: 40px 48px;
+}
+h1 {
+  font-size: 1.9rem; line-height: 1.25; margin: 0 0 14px;
+  padding-bottom: 12px; border-bottom: 1px solid #d0d7de;
+}
+h2 { font-size: 1.35rem; margin: 36px 0 10px; }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+p, li { margin: 10px 0; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote {
+  margin: 18px 0; padding: 4px 16px; border-left: 4px solid #d0d7de;
+  background: #f6f8fa; color: #57606a; border-radius: 0 6px 6px 0;
+}
+blockquote p { margin: 8px 0; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .88em; background: #eff1f3; padding: 2px 6px; border-radius: 6px;
+}
+pre {
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: .88em; }
+table {
+  border-collapse: collapse; width: 100%; margin: 18px 0;
+  display: block; overflow-x: auto; font-size: 15px;
+}
+th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; vertical-align: top; }
+th { background: #f6f8fa; font-weight: 600; }
+strong { font-weight: 650; }
+.meta { color: #57606a; }
+footer {
+  max-width: 880px; margin: 18px auto 0; font-size: 13px;
+  color: #6e7781; text-align: center;
+}
+@media (max-width: 640px) {
+  body { padding: 12px; }
+  main { padding: 24px 18px; border-radius: 8px; }
+}
+</style>
+</head>
+<body>
+<nav class="top">
+  <a class="brand" href="./">F&O API Studio</a>
+  <a href="./privacy-policy.html">Privacy policy</a>
+  <a href="./security.html">Security</a>
+  <a href="./permissions.html">Permissions</a>
+  <a href="https://github.com/hassanfarooq235/fo-api-studio">Source</a>
+</nav>
+<main>
+<h1>Permission &amp; privacy justifications — Chrome Web Store</h1>
+<p>Everything on this page is written to be <strong>copied directly into the developer dashboard</strong> (<em>Privacy practices</em> tab) when publishing F&amp;O API Studio. Keep each field short and factual; if a reviewer asks for more, point them at <code>docs/SECURITY.md</code> and the source.</p>
+<p>---</p>
+<h2>1. Single purpose description</h2>
+<blockquote><p>Send and inspect requests to Dynamics 365 Finance &amp; Operations APIs from a side panel: build OData, JSON custom-service and SOAP calls, then view the responses. Saving environments, variables, collections and history exists only to support that testing workflow.</p></blockquote>
+<p>---</p>
+<h2>2. Permission justifications</h2>
+<h3>API permissions</h3>
+<table><thead><tr><th>Permission</th><th>Justification (paste this)</th></tr></thead><tbody><tr><td>**<code>sidePanel</code>**</td><td>Opens the extension's request builder in Chrome's side panel so the user can test APIs next to their Dynamics 365 F&amp;O tabs without leaving the page.</td></tr><tr><td>**<code>storage</code>**</td><td>Stores the user's own test data locally and only: environments and their variables, collections, request history, settings, cached <code>$metadata</code>/WSDL documents and cached access tokens. Nothing is sent to any server operated by the developer.</td></tr><tr><td>**<code>identity</code>**</td><td>Acquires OAuth 2.0 access tokens for the user's own Microsoft Entra ID tenant via <code>chrome.identity.launchWebAuthFlow</code> (authorization-code + PKCE) and client-credentials flows, so requests can be authenticated as the user.</td></tr></tbody></table>
+<h3>Host permissions (granted at install)</h3>
+<table><thead><tr><th>Host permission</th><th>Justification (paste this)</th></tr></thead><tbody><tr><td><code>https://*.dynamics.com/*</code></td><td>The extension sends the API requests the user builds (OData, JSON and SOAP custom services) to their Dynamics 365 F&amp;O environment and reads that environment's <code>$metadata</code> and WSDL to generate request bodies. Host access is also what allows these calls to bypass CORS, which would otherwise block cross-origin requests from a side panel.</td></tr><tr><td><code>https://login.microsoftonline.com/*</code></td><td>Exchanges authorization codes and client credentials for access tokens against the user's Microsoft Entra ID tenant when a token-based sign-in mode is selected. This is the only identity host the extension talks to.</td></tr></tbody></table>
+<h3>Optional host permission</h3>
+<table><thead><tr><th>Permission</th><th>Justification (paste this)</th></tr></thead><tbody><tr><td><code>optional_host_permissions: https://*/*</code></td><td>Some F&amp;O endpoints are not hosted on <code>*.dynamics.com</code> — custom domains, Azure API Management front doors, reverse proxies or local development hosts. The extension requests access to <strong>one specific origin at a time</strong>, only when the user clicks <strong>Grant access</strong>, and Chrome shows its normal permission prompt. The broad pattern exists solely so the <em>user</em> can name the origin; the extension never requests or uses access to origins the user did not choose.</td></tr></tbody></table>
+<h3>Permissions deliberately <strong>not</strong> requested</h3>
+<p>Worth stating proactively if a reviewer asks about tab access or network scope:</p>
+<ul><li>**No <code>tabs</code>** — "Capture from tab" reads only the active tab's URL, and Chrome only exposes <code>tab.url</code> when a host permission already matches (i.e. a Dynamics 365 page). No <code>tabs</code> permission is declared and no tab data is read otherwise.</li><li>**No <code>scripting</code> / no content scripts** — the extension never injects code into web pages.</li><li>**No <code>webRequest</code> / <code>declarativeNetRequest</code>** — it does not observe, redirect or modify traffic; it only issues its own <code>fetch</code> calls.</li><li>**No <code>cookies</code>** — session mode relies on the browser's ordinary credential handling for the extension's own requests, not on the Cookies API.</li><li><strong>No sovereign-cloud identity hosts</strong> (<code>login.microsoftonline.us</code>, <code>login.chinacloudapi.cn</code>) — the extension currently targets public-cloud F&amp;O (<code>*.dynamics.com</code>) only, so those hosts are declared neither in <code>host_permissions</code> nor used in code. They will be added together with the matching F&amp;O hosts when sovereign-cloud support is implemented.</li><li>**No <code>offscreen</code>, <code>downloads</code>, <code>clipboardRead</code>** — copying uses the standard <code>navigator.clipboard.writeText</code>, which needs no permission and is only invoked by an explicit user click.</li></ul>
+<p>---</p>
+<h2>3. Remote code declaration</h2>
+<blockquote><p><strong>No, I am not using remote code.</strong> All scripts are bundled inside the extension package. The extension-page CSP is <code>script-src &#x27;self&#x27;; object-src &#x27;self&#x27;</code>, there is no <code>eval</code>, no <code>new Function</code>, no dynamically-created <code>&lt;script&gt;</code> elements and no CDN or remote assets. Network responses (JSON, XML, WSDL, <code>$metadata</code>) are treated strictly as <em>data</em> and rendered through escaping helpers — never executed.</p></blockquote>
+<p>---</p>
+<h2>4. Data usage disclosure</h2>
+<p>Answer the dashboard's checkboxes as follows (consistent with <code>docs/PRIVACY_POLICY.md</code>):</p>
+<p><strong>"What data does this extension collect?"</strong></p>
+<ul><li>Leave <strong>all</strong> collection categories unchecked: the extension collects no data for the developer — no personal info, no website content, no activity/history, no device info, no authentication info, no search terms, no financial/health data.</li><li>If a category forces a choice because data is <em>stored locally</em>, note in the free-text/notes that all storage is local-only and never transmitted to the developer.</li></ul>
+<p><strong>Certifications to tick:</strong></p>
+<ul><li>✅ The extension complies with the <a href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq">Limited Use requirements</a>.</li><li>✅ Data is not sold or shared for cross-context behavioural advertising.</li><li>✅ Data is not used for creditworthiness or lending purposes.</li><li>✅ The developer does not collect or use data for purposes beyond the extension's single stated purpose.</li></ul>
+<p><strong>Privacy policy URL:</strong> the public permalink of <code>docs/PRIVACY_POLICY.md</code>.</p>
+<p>---</p>
+<h2>5. Test instructions for the reviewer</h2>
+<p>Paste into the <em>Test instructions</em> field (also in <code>docs/STORE_LISTING.md</code>):</p>
+<blockquote><p>1. Click the extension icon — the side panel opens. 2. Open <strong>Environments → New environment</strong>, enter any <code>https://&lt;your-env&gt;.operations.dynamics.com</code> URL, choose <strong>Browser session</strong> auth and save. 3. In <strong>Build → OData</strong>, click <strong>Load metadata</strong>, pick an entity set (for example <code>CustomersV3</code> on the USMF company), click <strong>Build GET URL</strong> and then <strong>Send</strong>. 4. Inspect the response in the Pretty / Table / Headers / Raw tabs. 5. <strong>Collections</strong> lets you save the request; <strong>History</strong> shows the previous calls; <strong>Settings</strong> has timeout, history size, global variables and export.  The extension does not require an account, payment, or any data of ours to run; a reader access to an F&amp;O environment (or any Dynamics 365 page for "Capture from tab") is enough to see the full flow. Without F&amp;O credentials the panel still opens, lists its UI and reports a clear auth error instead of failing silently.</p></blockquote>
+</main>
+<footer>F&O API Studio is independent software and is not affiliated with, endorsed by, or
+supported by Microsoft.</footer>
+</body>
+</html>

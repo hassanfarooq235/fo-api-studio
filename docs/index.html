@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="description" content="F&O API Studio — a Postman-style API tester for Dynamics 365 Finance & Operations that runs as a Chrome side panel.">
+<title>F&O API Studio — D365 F&amp;O API tester for Chrome</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px;
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #1b1f23; background: #f6f8fa;
+}
+nav.top {
+  max-width: 880px; margin: 0 auto 14px; display: flex; gap: 18px;
+  flex-wrap: wrap; align-items: baseline; font-size: 14px;
+}
+nav.top a { color: #57606a; text-decoration: none; }
+nav.top a:hover { color: #0969da; text-decoration: underline; }
+nav.top .brand { font-weight: 650; color: #1b1f23; }
+main {
+  max-width: 880px; margin: 0 auto; background: #fff;
+  border: 1px solid #d0d7de; border-radius: 12px; padding: 40px 48px;
+}
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+.tagline { font-size: 1.05rem; color: #57606a; margin: 0 0 26px; }
+h2 { font-size: 1.3rem; margin: 34px 0 10px; padding-top: 24px; border-top: 1px solid #d0d7de; }
+p, li { margin: 10px 0; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+ul { padding-left: 20px; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .88em; background: #eff1f3; padding: 2px 6px; border-radius: 6px;
+}
+.doclinks { list-style: none; padding: 0; margin: 16px 0; }
+.doclinks li { margin: 0 0 10px; }
+.doclinks a { font-weight: 600; }
+.doclinks span { color: #57606a; font-weight: 400; }
+.badge {
+  display: inline-block; background: #dafbe1; color: #116329;
+  border: 1px solid #aceebb; border-radius: 999px; padding: 3px 12px;
+  font-size: 13px; font-weight: 600; margin: 0 6px 6px 0;
+}
+footer {
+  max-width: 880px; margin: 18px auto 0; font-size: 13px;
+  color: #6e7781; text-align: center;
+}
+@media (max-width: 640px) {
+  body { padding: 12px; }
+  main { padding: 24px 18px; border-radius: 8px; }
+}
+</style>
+</head>
+<body>
+<nav class="top">
+  <a class="brand" href="./">F&amp;O API Studio</a>
+  <a href="./privacy-policy.html">Privacy policy</a>
+  <a href="./security.html">Security</a>
+  <a href="./permissions.html">Permissions</a>
+  <a href="https://github.com/hassanfarooq235/fo-api-studio">Source</a>
+</nav>
+
+<main>
+<h1>F&amp;O API Studio</h1>
+<p class="tagline">A Postman-style API tester for Dynamics&nbsp;365 Finance&nbsp;&amp;&nbsp;Operations —
+OData, JSON and SOAP custom services — that lives in Chrome's side panel.</p>
+
+<p>
+  <span class="badge">No analytics, no telemetry</span>
+  <span class="badge">Data stays on your device</span>
+  <span class="badge">No remote code</span>
+  <span class="badge">Minimal permissions</span>
+</p>
+
+<h2>Documents</h2>
+<ul class="doclinks">
+  <li><a href="./privacy-policy.html">Privacy policy</a> — <span>what the extension accesses, where
+      it goes, and what it never collects.</span></li>
+  <li><a href="./security.html">Security design</a> — <span>threat model, secret handling and the
+      extension's trust boundaries.</span></li>
+  <li><a href="./permissions.html">Permission justifications</a> — <span>why each manifest
+      permission is requested.</span></li>
+  <li><a href="https://github.com/hassanfarooq235/fo-api-studio">Source code</a> — <span>open
+      repository with issues, changelog and store-submission docs.</span></li>
+</ul>
+
+<h2>What it does</h2>
+<ul>
+  <li>Build and send <strong>OData</strong> requests with metadata-assisted entity and key pickers,
+      <code>$filter</code>/<code>$select</code>/<code>$expand</code> helpers, and paging through
+      <code>@odata.nextLink</code>.</li>
+  <li>Call <strong>JSON and SOAP custom services</strong> with a WSDL-driven operation picker and a
+      generated envelope you can still edit.</li>
+  <li>Sends <strong>anything else</strong> over raw HTTP, with declarative assertions on the
+      response — no scripting engine, no <code>eval</code>.</li>
+  <li>Keeps <strong>environments, <code>{{variables}}</code>, collections and history</strong>
+      across sessions, in your browser profile only.</li>
+  <li>Signs in via <strong>session cookie, Entra interactive (PKCE), client credentials or a
+      manual bearer token</strong> — secrets stay in the background process.</li>
+</ul>
+
+<h2>Independence</h2>
+<p>This is independent software. It is not affiliated with, endorsed by, or supported by
+Microsoft, and it is not a Microsoft product. Dynamics 365 and Finance &amp; Operations are
+trademarks of the Microsoft group of companies.</p>
+</main>
+
+<footer>Questions or security reports: hassanfarooq235@gmail.com ·
+<a href="./privacy-policy.html">Privacy policy</a></footer>
+</body>
+</html>

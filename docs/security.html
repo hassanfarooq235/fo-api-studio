@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="description" content="Threat model and security design of the F&amp;O API Studio Chrome extension.">
+<title>Security design — F&amp;O API Studio</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px;
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #1b1f23; background: #f6f8fa;
+}
+nav.top {
+  max-width: 880px; margin: 0 auto 14px; display: flex; gap: 18px;
+  flex-wrap: wrap; align-items: baseline; font-size: 14px;
+}
+nav.top a { color: #57606a; text-decoration: none; }
+nav.top a:hover { color: #0969da; text-decoration: underline; }
+nav.top .brand { font-weight: 650; color: #1b1f23; }
+main {
+  max-width: 880px; margin: 0 auto; background: #fff;
+  border: 1px solid #d0d7de; border-radius: 12px; padding: 40px 48px;
+}
+h1 {
+  font-size: 1.9rem; line-height: 1.25; margin: 0 0 14px;
+  padding-bottom: 12px; border-bottom: 1px solid #d0d7de;
+}
+h2 { font-size: 1.35rem; margin: 36px 0 10px; }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+p, li { margin: 10px 0; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote {
+  margin: 18px 0; padding: 4px 16px; border-left: 4px solid #d0d7de;
+  background: #f6f8fa; color: #57606a; border-radius: 0 6px 6px 0;
+}
+blockquote p { margin: 8px 0; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .88em; background: #eff1f3; padding: 2px 6px; border-radius: 6px;
+}
+pre {
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: .88em; }
+table {
+  border-collapse: collapse; width: 100%; margin: 18px 0;
+  display: block; overflow-x: auto; font-size: 15px;
+}
+th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; vertical-align: top; }
+th { background: #f6f8fa; font-weight: 600; }
+strong { font-weight: 650; }
+.meta { color: #57606a; }
+footer {
+  max-width: 880px; margin: 18px auto 0; font-size: 13px;
+  color: #6e7781; text-align: center;
+}
+@media (max-width: 640px) {
+  body { padding: 12px; }
+  main { padding: 24px 18px; border-radius: 8px; }
+}
+</style>
+</head>
+<body>
+<nav class="top">
+  <a class="brand" href="./">F&O API Studio</a>
+  <a href="./privacy-policy.html">Privacy policy</a>
+  <a href="./security.html">Security</a>
+  <a href="./permissions.html">Permissions</a>
+  <a href="https://github.com/hassanfarooq235/fo-api-studio">Source</a>
+</nav>
+<main>
+<h1>Security design — F&amp;O API Studio</h1>
+<p>This document explains how the extension is built to be safe to install, how it meets the Chrome Web Store's expectations for a Manifest V3 item, and where the residual risks are. It is written to be read by a reviewer as well as by a security-conscious user.</p>
+<p>---</p>
+<h2>1. Assets and trust model</h2>
+<table><thead><tr><th>Asset</th><th>Where it lives</th><th>Who can see it</th></tr></thead><tbody><tr><td>Environments (name, base URL, company, variables)</td><td><code>chrome.storage.local</code>, key <code>envs</code></td><td>Side panel + background</td></tr><tr><td><strong>Client secrets, pasted bearer tokens, cached access tokens</strong></td><td><code>chrome.storage.local</code>, keys <code>envs</code> / <code>tokens</code></td><td><strong>Background only</strong></td></tr><tr><td>Requests you build (the current draft, with credential-looking header values redacted), collections, history</td><td><code>chrome.storage.local</code></td><td>Side panel</td></tr><tr><td>Responses from your API</td><td>Local history, then discarded</td><td>Side panel</td></tr></tbody></table>
+<p><strong>Untrusted inputs</strong> — everything that comes back from a network: response bodies and headers, <code>$metadata</code> documents, WSDL documents, and any URL you paste or reopen from history. None of it is ever executed or interpolated into markup unescaped.</p>
+<p><strong>Trusted</strong> — the packaged extension code (no remote code), your browser profile, and the host you deliberately configured.</p>
+<p>---</p>
+<h2>2. Two-context architecture</h2>
+<pre><code>┌──────────────────────────────┐        typed messages         ┌──────────────────────────────┐
+│ side panel (rendered page)   │  ─────────────────────────▶   │ background service worker    │
+│  builds a plain JSON spec    │   http.send / env.* / auth.*  │  owns secrets, does fetch()  │
+│  never receives a secret     │  ◀─────────────────────────   │  validates URL + origin      │
+└──────────────────────────────┘     redacted results          └──────────────────────────────┘</code></pre>
+<ul><li>The panel sends a <strong>request spec</strong> (<code>url</code>, <code>method</code>, <code>headers</code>, <code>body</code>, <code>timeoutMs</code>, <code>auth.envId</code>); it never sends credentials and never receives them.</li><li>The message protocol is a closed list of 10 types (<code>MSG</code> in <code>src/shared/constants.js</code>): <code>http.send</code>, <code>env.list|save|delete|active.get|active.set</code>, <code>auth.signin|token|status|inspect</code>. There is deliberately <strong>no</strong> "give me the secret" message.</li><li><code>env.list</code> returns <strong>redacted</strong> environments: <code>auth.hasSecret</code> / <code>auth.hasToken</code> booleans only, so even opening DevTools on the panel page cannot read a stored secret.</li></ul>
+<blockquote><p>This boundary limits the blast radius of a defect in the UI (e.g. an injection bug); it is an architectural separation inside one extension origin, not an OS sandbox.</p></blockquote>
+<p>---</p>
+<h2>3. Outbound requests — one choke point</h2>
+<p>All API traffic goes through <code>sendRequest()</code> in <code>src/background/http.js</code>. In order:</p>
+<ol><li><strong>Scheme allowlist</strong> — the URL must start with <code>http://</code> or <code>https://</code>. Everything else (<code>file:</code>, <code>ftp:</code>, <code>data:</code>, <code>chrome:</code>) is refused before any I/O.</li><li><strong>Host permission</strong> — the target origin must be covered by <code>host_permissions</code> (<code>*.dynamics.com</code>, <code>login.microsoftonline.com</code>) or by an <strong>optional</strong> permission the user granted for that specific origin. Without it the request never leaves; the error view renders a one-click "Grant access" button instead.</li><li><strong>Token scoping</strong> — a bearer token is attached <strong>only when the request origin equals the environment's own origin</strong>. A URL pointing anywhere else fails closed with an explicit message ("Access token withheld: …"), telling the user to either add an <code>Authorization</code> header themselves or point the environment at that host. This is asserted by tests (<code>tools/browser.test.html</code>, "token scoping (security)" section).</li><li><strong>Explicit credentials win</strong> — if the user typed an <code>Authorization</code> header, it is sent as-is and the automatic token path is skipped. Nothing is silently overridden.</li><li><strong>Cookie rules</strong> — <code>session</code> mode uses <code>credentials: &#x27;include&#x27;</code>; all bearer modes use <code>credentials: &#x27;omit&#x27;</code>, so cookies for the target host are <em>not</em> attached to token-authenticated calls (and vice versa).</li><li><strong>Bounded timeouts</strong> — clamped to 1–180 s, enforced with <code>AbortController</code>.</li><li><strong>Redirects</strong> — <code>redirect: &#x27;follow&#x27;</code>. Per the Fetch standard, a developer-set <code>Authorization</code> header is removed when a redirect crosses origins, so a redirect cannot carry the environment's token to another host.</li><li><strong>Errors are classified, never swallowed</strong> — <code>input</code> / <code>auth</code> / <code>permission</code> / <code>timeout</code> / <code>network</code>, each with an actionable message (401/403 → Entra application ACL; 404 → company and <code>cross-company</code>; blocked host → grant access). Messages never contain token material.</li></ol>
+<p>Authentication endpoints are separate from this path and are hard-coded to <code>https://login.microsoftonline.com/&lt;tenant&gt;/oauth2/v2.0/…</code> — the tenant is <code>encodeURIComponent</code>-escaped, so a stored environment cannot turn token exchange into a request to an arbitrary host.</p>
+<p>---</p>
+<h2>4. Secrets</h2>
+<ul><li><strong>Stored locally, background-owned.</strong> Client secrets and pasted tokens live under <code>chrome.storage.local</code>; the panel only ever sees <code>hasSecret</code> / <code>hasToken</code> flags and a "•••••• saved" placeholder. Leaving a field blank on edit keeps the stored value.</li><li><strong>Never exported.</strong> Collection/settings exports contain no secrets; <strong>Copy as cURL</strong> replaces the token with the literal <code>&lt;access_token&gt;</code> (and says so in the toast).</li><li><strong>Never logged.</strong> There is no <code>console.*</code> call anywhere in <code>src/</code> (enforced by review; grep it yourself: <code>grep -rn &quot;console\.&quot; src</code>).</li><li><strong>Never rendered into the DOM.</strong> The only places secrets appear are the password-style inputs you type them into.</li><li><strong>Caching.</strong> Acquired tokens are cached in the background under <code>tokens</code>, keyed by environment + mode + scope, with a 60 s expiry buffer; they are dropped when the environment is deleted.</li></ul>
+<p>---</p>
+<h2>5. Rendering untrusted data</h2>
+<p>Server-provided text is data, never code:</p>
+<ul><li>Every dynamic string that becomes markup passes through <code>escapeHtml()</code>.</li><li>JSON/XML highlighting builds escaped tokens; a hostile body such as <code>&quot;&lt;img src=x onerror=…&gt;&quot;</code> or <code>&quot;&lt;/pre&gt;&lt;script&gt;…&quot;</code> renders as visible text. This is covered by explicit regression tests ("hostile JSON is escaped in pretty view").</li><li>WSDL and <code>$metadata</code> are parsed with <code>DOMParser</code> into XML documents; only element/attribute <em>names and text</em> are read out of them, and those values are escaped again on the way into the UI. XML from the server is never assigned to <code>innerHTML</code> directly.</li><li>A pasted cURL command is <strong>tokenised, never executed</strong>: no shell, no interpolation, only recognised flags are consumed, credentials passed with <code>-u</code>/<code>-b</code>/<code>--user</code>/<code>--cookie</code> are dropped with a notice, and headers a browser forbids (<code>Host</code>, <code>Content-Length</code>, …) are removed.</li><li>Rendering has budgets so a hostile or enormous response cannot lock the panel up: syntax highlighting stops at 300 KB, pretty-printing at 2 MB, beyond that the body is windowed with a note, and tables render 200 rows at a time behind a "show more" control.</li><li>No <code>eval</code>, no <code>new Function</code>, no <code>setTimeout(string)</code>, no inline event handlers, no dynamically created <code>&lt;script&gt;</code>.</li></ul>
+<p>---</p>
+<h2>6. Content Security Policy and remote code</h2>
+<pre><code>&quot;content_security_policy&quot;: { &quot;extension_pages&quot;: &quot;script-src &#x27;self&#x27;; object-src &#x27;self&#x27;&quot; }</code></pre>
+<ul><li>All JavaScript is packaged in the extension; nothing is fetched and executed from a server, no CDN, no obfuscated blobs, no <code>wasm</code> from the network.</li><li>The store's remote-code declaration is <strong>"No, I am not using remote code."</strong></li><li>The only outbound data are ordinary <code>fetch</code> responses, which are rendered as text (§5).</li></ul>
+<p>---</p>
+<h2>7. Permissions</h2>
+<table><thead><tr><th>Permission</th><th>Why</th><th>Scope</th></tr></thead><tbody><tr><td><code>sidePanel</code></td><td>The UI</td><td>Extension's own panel</td></tr><tr><td><code>storage</code></td><td>Local-only data</td><td><code>chrome.storage.local</code></td></tr><tr><td><code>identity</code></td><td>Entra ID sign-in (auth-code + PKCE, client credentials)</td><td><code>login.microsoftonline.com</code></td></tr><tr><td><code>https://*.dynamics.com/*</code></td><td>Send API calls, read <code>$metadata</code> / WSDL</td><td>Public-cloud F&amp;O only</td></tr><tr><td><code>https://login.microsoftonline.com/*</code></td><td>Token exchange</td><td>The only identity host used in code</td></tr><tr><td><code>optional: https://*/*</code></td><td>Non-<code>dynamics.com</code> endpoints (custom domains, APIM, proxies)</td><td>Requested <strong>per origin, on user click</strong>, via <code>chrome.permissions.request</code></td></tr></tbody></table>
+<p>Deliberately absent: <code>tabs</code>, <code>scripting</code>/content scripts, <code>webRequest</code>/<code>declarativeNetRequest</code>, <code>cookies</code>, <code>downloads</code>, <code>offscreen</code>, <code>clipboardRead</code>, and sovereign-cloud identity hosts (which the code does not use — declaring them would be over-permissioning). Full justifications: [<code>PERMISSIONS_JUSTIFICATION.md</code>](PERMISSIONS_JUSTIFICATION.md).</p>
+<p>Note on tab access: "Capture from tab" calls <code>chrome.tabs.query</code> <strong>without</strong> the <code>tabs</code> permission; Chrome only exposes <code>tab.url</code> when a host permission already matches (i.e. you are on a Dynamics 365 page), otherwise the feature politely reports that the URL is unavailable.</p>
+<p>---</p>
+<h2>8. Data at rest, and what never happens</h2>
+<ul><li>Everything is stored in your own Chrome profile. Uninstalling removes it.</li><li>No analytics, no telemetry, no crash reporting, no advertising SDKs, no third-party servers.</li><li>No browsing-history or page-content access (no content scripts at all).</li><li>No data is transmitted to the developer.</li></ul>
+<p>---</p>
+<h2>9. Supply chain</h2>
+<ul><li><strong>Zero runtime dependencies</strong> — no npm packages, no bundler, no lockfile. There is nothing to pin, audit or update.</li><li>Source is plain ES modules; <code>manifest.json</code> points directly at them.</li><li>Dev-only tooling (<code>tools/</code>, including tests and the preview harness) is excluded from the store package and is never imported by extension code.</li></ul>
+<p>---</p>
+<h2>10. Residual risks (stated honestly)</h2>
+<ol><li><strong>Local device access.</strong> Anyone with access to your unlocked Chrome profile can read what the extension stores, exactly as they could read your browser profile itself. Chrome does not expose OS-level keychain storage to extensions.</li><li><strong>Shared machine / shoulder-surfing.</strong> History keeps response bodies and request payloads. Clear it from the Settings pane, or lower the history limit to 0-equivalent by clearing it.</li><li><strong>Session mode uses your cookies.</strong> Requests sent in <code>session</code> mode are authenticated as <em>you</em>; an accidental write call is an authenticated write. Use <code>clientCredentials</code> for unattended/read-only testing where appropriate.</li><li><strong>You choose the target host.</strong> The extension will send whatever request you build to any origin you have granted — that is its purpose. The token guard (§3) prevents credentials from following a wrong URL, but it cannot stop you from deliberately calling an untrusted host with a deliberately pasted header.</li><li><strong>Not yet validated against a live tenant.</strong> Logic is covered by 44 unit + 60 DOM/security assertions; session-cookie behaviour against real F&amp;O endpoints should be verified before publishing.</li><li><strong>No request signing or replay protection.</strong> This is a client tool; TLS and the API's own authentication are the protections in play.</li></ol>
+<p>---</p>
+<h2>11. Verifying the security properties yourself</h2>
+<pre><code># 1. no dynamic code execution, no logging of any kind
+grep -rnE &quot;eval\(|new Function|console\.&quot; src/        # expected: no output
+
+# 2. unit suite (validation, variables, generators)
+/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc --module-file=tools/unit.test.js
+
+# 3. DOM + security suite (XSS escaping, token scoping, origin guard)
+python3 tools/serve.py          # no-store dev server
+# open http://127.0.0.1:8766/tools/browser.test.html</code></pre>
+<p>Expected: <code>✓ all 44 assertions passed</code> and <code>PASS 60</code>.</p>
+<h2>12. Reporting a problem</h2>
+<p>Please open an issue on the project repository or email <strong>hassanfarooq235@gmail.com</strong> with the extension version (<code>chrome://extensions</code>) and steps to reproduce. Do not include real credentials or tokens in a report.</p>
+</main>
+<footer>F&O API Studio is independent software and is not affiliated with, endorsed by, or
+supported by Microsoft.</footer>
+</body>
+</html>

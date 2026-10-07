@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="description" content="What the F&amp;O API Studio Chrome extension accesses, where data goes, and what it does not do.">
+<title>Privacy Policy — F&amp;O API Studio</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px;
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #1b1f23; background: #f6f8fa;
+}
+nav.top {
+  max-width: 880px; margin: 0 auto 14px; display: flex; gap: 18px;
+  flex-wrap: wrap; align-items: baseline; font-size: 14px;
+}
+nav.top a { color: #57606a; text-decoration: none; }
+nav.top a:hover { color: #0969da; text-decoration: underline; }
+nav.top .brand { font-weight: 650; color: #1b1f23; }
+main {
+  max-width: 880px; margin: 0 auto; background: #fff;
+  border: 1px solid #d0d7de; border-radius: 12px; padding: 40px 48px;
+}
+h1 {
+  font-size: 1.9rem; line-height: 1.25; margin: 0 0 14px;
+  padding-bottom: 12px; border-bottom: 1px solid #d0d7de;
+}
+h2 { font-size: 1.35rem; margin: 36px 0 10px; }
+h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+p, li { margin: 10px 0; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote {
+  margin: 18px 0; padding: 4px 16px; border-left: 4px solid #d0d7de;
+  background: #f6f8fa; color: #57606a; border-radius: 0 6px 6px 0;
+}
+blockquote p { margin: 8px 0; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .88em; background: #eff1f3; padding: 2px 6px; border-radius: 6px;
+}
+pre {
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: .88em; }
+table {
+  border-collapse: collapse; width: 100%; margin: 18px 0;
+  display: block; overflow-x: auto; font-size: 15px;
+}
+th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; vertical-align: top; }
+th { background: #f6f8fa; font-weight: 600; }
+strong { font-weight: 650; }
+.meta { color: #57606a; }
+footer {
+  max-width: 880px; margin: 18px auto 0; font-size: 13px;
+  color: #6e7781; text-align: center;
+}
+@media (max-width: 640px) {
+  body { padding: 12px; }
+  main { padding: 24px 18px; border-radius: 8px; }
+}
+</style>
+</head>
+<body>
+<nav class="top">
+  <a class="brand" href="./">F&O API Studio</a>
+  <a href="./privacy-policy.html">Privacy policy</a>
+  <a href="./security.html">Security</a>
+  <a href="./permissions.html">Permissions</a>
+  <a href="https://github.com/hassanfarooq235/fo-api-studio">Source</a>
+</nav>
+<main>
+<h1>Privacy Policy — F&amp;O API Studio</h1>
+<p><strong>Effective date:</strong> October 8, 2026 <strong>Contact:</strong> hassanfarooq235@gmail.com <strong>Policy URL:</strong> https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html</p>
+<p>F&amp;O API Studio ("the extension") is a client-side tool for testing Dynamics 365 Finance &amp; Operations APIs. This policy explains what the extension accesses, where that data goes, and what it does <strong>not</strong> do. It should be read together with the source code, which is open.</p>
+<blockquote><p>This extension is independent software. It is not affiliated with, endorsed by, or supported by Microsoft, and it is not a Microsoft product.</p></blockquote>
+<h2>Short version</h2>
+<ul><li>The extension <strong>does not collect, transmit, sell or share any data with the developer.</strong></li><li>There is <strong>no analytics, telemetry, advertising, fingerprinting or tracking</strong> of any kind.</li><li>All data the extension stores lives <strong>locally in your browser profile</strong> on your device.</li><li>Network requests are made <strong>only</strong> to (a) the Dynamics 365 / API host <em>you</em> configure and (b) Microsoft identity endpoints when <em>you</em> choose a token-based sign-in mode.</li></ul>
+<h2>1. Data the extension accesses</h2>
+<p>When you use it, the extension reads and writes only what you explicitly ask it to:</p>
+<table><thead><tr><th>Data</th><th>Why</th><th>Where it goes</th></tr></thead><tbody><tr><td>The base URL, company and name of the environments you create</td><td>To address your API host</td><td>Local storage, then to that host as part of requests you send</td></tr><tr><td>Request URLs, methods, headers, parameters and bodies you type</td><td>To send the request you built</td><td>To the API host you configured, to local history, and to your local draft (so the panel can reopen where you left off — header values that look like credentials are never written to the draft)</td></tr><tr><td>Responses returned by that host (status, headers, body)</td><td>So you can inspect them</td><td>Local storage (last responses appear in history until you clear it)</td></tr><tr><td>OData <code>$metadata</code> and WSDL documents fetched from your host</td><td>To offer entity/operation pickers and body templates</td><td>Cached in local storage (latest 10 entries)</td></tr><tr><td>Entra ID tenant/client IDs, client secrets, pasted bearer tokens, obtained access tokens</td><td>To authenticate your requests</td><td>Local storage, readable <strong>only</strong> by the extension's background process</td></tr><tr><td>Your browser's sign-in session cookies</td><td>Only in "session" auth mode, to reuse an existing sign-in</td><td>Sent to your configured host, as with any normal page request</td></tr><tr><td>The address of the browser tab you are on</td><td>Only when you click "Capture from tab", to prefill the environment form</td><td>Local storage</td></tr></tbody></table>
+<p>The extension does <strong>not</strong> read the contents of web pages you visit, does not inject content scripts, does not read your browsing history, and does not access location, contacts, files or any other device data.</p>
+<h2>2. Data stored on your device</h2>
+<p>Everything is kept in <code>chrome.storage.local</code> inside your own Chrome profile, under these keys: environments (including any secrets you saved), the active environment, cached tokens, global variables, collections, request history, settings, the metadata cache and the draft of the request in progress.</p>
+<ul><li>The data never leaves your device except as requests you explicitly send.</li><li>Secrets (client secrets, manual tokens, cached access tokens) are stored in the background process and are never handed to the rendered page, never included in exports, and never written into copied cURL commands.</li><li>Chrome's normal storage encryption and your profile's protection apply.</li></ul>
+<h2>3. Data transmitted off the device</h2>
+<p>The extension makes HTTP requests only to:</p>
+<ol><li><strong>The API host you configured</strong> — normally <code>https://&lt;your-env&gt;.operations.dynamics.com</code>, or whatever custom origin you granted access to. This is your own organization's server; your data is handled under your organization's policies.</li><li><strong>Microsoft identity endpoints</strong> — <code>login.microsoftonline.com</code>, used only when you pick the interactive or client-credentials sign-in mode.</li></ol>
+<p>No request is ever sent to the developer, to an analytics provider, to an advertising network or to any other third party. The extension contains no tracking pixels, no beacons and no usage reporting.</p>
+<h2>4. What is explicitly not collected</h2>
+<ul><li>Personal information, account identifiers or contact details</li><li>Browsing history or the content of pages you visit</li><li>Search terms, keystrokes or form data outside the extension's own panels</li><li>Device or browser fingerprints, advertising identifiers, IP addresses</li><li>Crash reports, diagnostic logs or performance metrics</li></ul>
+<h2>5. Sharing and sale</h2>
+<p>Your data is never sold, rented, brokered or shared with third parties, because it is never collected in the first place. The extension makes no server-to-server calls of its own.</p>
+<h2>6. Retention and deletion</h2>
+<ul><li>Data persists only until you delete it or uninstall the extension.</li><li><strong>History</strong> is capped (default 100 entries) and can be cleared from the Settings pane.</li><li><strong>Uninstalling</strong> the extension removes all of its local storage, including saved secrets and tokens. You can also clear individual items from the Environments, Collections and Settings panes.</li><li>Cached access tokens expire on their own (<code>expires_in</code>) and are re-fetched only when you send an authenticated request.</li></ul>
+<h2>7. Security measures</h2>
+<ul><li>Manifest V3 with a strict extension-page CSP (<code>script-src &#x27;self&#x27;; object-src &#x27;self&#x27;</code>): no remote code, no <code>eval</code>, no dynamically loaded scripts.</li><li>A minimal permission set — <code>sidePanel</code>, <code>storage</code>, <code>identity</code> — plus host access limited to <code>*.dynamics.com</code> and the Microsoft identity endpoints. All other origins are <strong>optional</strong> permissions requested per-origin, only when you click <strong>Grant access</strong>.</li><li>All outbound requests are issued by the background service worker, so bearer tokens are attached outside the rendered UI.</li><li>Server-provided data (response bodies, headers, WSDL, <code>$metadata</code>) is escaped before being displayed, preventing markup injection through API responses.</li></ul>
+<p>See [<code>docs/SECURITY.md</code>](SECURITY.md) for the full design rationale.</p>
+<h2>8. Children's privacy</h2>
+<p>The extension is a professional developer tool and is not directed at children under 13. It does not knowingly collect information from children. If you believe a child has provided personal data through the extension's storage, contact us and it will be removed.</p>
+<h2>9. Changes to this policy</h2>
+<p>Any change will be published at https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html with an updated effective date. Material changes (such as adding analytics) will be called out explicitly — in practice, the policy will only ever get shorter in terms of what is collected.</p>
+<h2>10. Your rights and contact</h2>
+<p>Because the extension collects no data and keeps everything locally, there is no personal-data store for us to access, export or delete — you control it entirely from your own browser profile.</p>
+<p>Questions, privacy requests or security reports: <strong>hassanfarooq235@gmail.com</strong>.</p>
+</main>
+<footer>F&O API Studio is independent software and is not affiliated with, endorsed by, or
+supported by Microsoft.</footer>
+</body>
+</html>

@@ -123,11 +123,12 @@ the [developer dashboard](https://chrome.google.com/webstore/devconsole).
 
 ## Pre-submission checklist
 
-- [ ] **`homepage_url`** in `manifest.json` still points at a placeholder — set it to your real
-      project page, or delete the key (it is optional).
-- [ ] **Publish [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md)** at a public URL (GitHub
-      Pages or the repo permalink) and paste it into the developer account and the item's
-      privacy field. Replace `{{CONTACT_EMAIL}}` / `{{POLICY_URL}}` first.
+- [x] **`homepage_url`** in `manifest.json` set to the project site
+      (`https://hassanfarooq235.github.io/fo-api-studio/`).
+- [x] **Privacy policy published** — [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md) is
+      rendered by `tools/md2html.py` to `docs/privacy-policy.html` and served from GitHub Pages at
+      `https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html`. Paste that URL into
+      the developer account and the item's privacy field when you fill the dashboard.
 - [ ] Fill **permissions justifications, single-purpose description and the remote-code
       declaration** — all copy-paste ready in
       [`docs/PERMISSIONS_JUSTIFICATION.md`](docs/PERMISSIONS_JUSTIFICATION.md).
@@ -141,7 +142,17 @@ the [developer dashboard](https://chrome.google.com/webstore/devconsole).
       still open.
 - [x] **Both test suites green** — 100 unit assertions, 149 DOM/security assertions. Still to do:
       exercise the extension against a real F&O environment (see limitations).
-- [ ] Register / verify the developer account (one-time US$5 fee).
+- [ ] Register / verify the developer account (one-time US$5 fee) — yours to do; the copy for
+      every field is ready in `docs/`.
+
+### Project links
+
+| | |
+| --- | --- |
+| Repository | https://github.com/hassanfarooq235/fo-api-studio |
+| Project site / homepage | https://hassanfarooq235.github.io/fo-api-studio/ |
+| Privacy policy URL | https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html |
+| Contact / support | hassanfarooq235@gmail.com |
 
 ## Known limitations & risks
 

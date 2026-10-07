@@ -1,8 +1,8 @@
 # Privacy Policy — F&O API Studio
 
 **Effective date:** October 8, 2026
-**Contact:** {{CONTACT_EMAIL}}
-**Policy URL:** {{POLICY_URL}}
+**Contact:** hassanfarooq235@gmail.com
+**Policy URL:** https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html
 
 F&O API Studio ("the extension") is a client-side tool for testing Dynamics 365 Finance &
 Operations APIs. This policy explains what the extension accesses, where that data goes, and
@@ -109,7 +109,7 @@ personal data through the extension's storage, contact us and it will be removed
 
 ## 9. Changes to this policy
 
-Any change will be published at {{POLICY_URL}} with an updated effective date. Material changes
+Any change will be published at https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html with an updated effective date. Material changes
 (such as adding analytics) will be called out explicitly — in practice, the policy will only
 ever get shorter in terms of what is collected.
 
@@ -119,4 +119,4 @@ Because the extension collects no data and keeps everything locally, there is no
 store for us to access, export or delete — you control it entirely from your own browser
 profile.
 
-Questions, privacy requests or security reports: **{{CONTACT_EMAIL}}**.
+Questions, privacy requests or security reports: **hassanfarooq235@gmail.com**.

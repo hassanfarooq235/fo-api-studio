@@ -97,10 +97,10 @@ Icon: the generated `assets/icons/icon128.png` (rounded square, blue gradient, w
 
 | Field | Value |
 | --- | --- |
-| Website | *(optional — project page, or leave blank)* |
-| Support email | `{{CONTACT_EMAIL}}` |
-| Support page | repo issues page, e.g. `{{REPO_URL}}/issues` |
-| Privacy policy URL | `{{POLICY_URL}}` (published `docs/PRIVACY_POLICY.md`) |
+| Website | `https://hassanfarooq235.github.io/fo-api-studio/` (project site) |
+| Support email | `hassanfarooq235@gmail.com` |
+| Support page | `https://github.com/hassanfarooq235/fo-api-studio/issues` |
+| Privacy policy URL | `https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html` (published `docs/PRIVACY_POLICY.md`) |
 
 ---
 
@@ -137,9 +137,12 @@ and reports a clear, actionable authentication message instead of failing silent
 
 ## Pre-publish reminders
 
-- [ ] `manifest.json` → `homepage_url` is still a placeholder (set or delete).
-- [ ] Replace `{{CONTACT_EMAIL}}`, `{{POLICY_URL}}`, `{{REPO_URL}}`, `{{EFFECTIVE_DATE}}`.
+- [x] `manifest.json` → `homepage_url` set to `https://hassanfarooq235.github.io/fo-api-studio/`.
+- [x] Contact, repo and privacy-policy values filled in everywhere (contact
+      `hassanfarooq235@gmail.com`, repo `https://github.com/hassanfarooq235/fo-api-studio`, policy
+      `https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html`, effective
+      October 8, 2026).
 - [ ] Privacy tab: single purpose, permission justifications, remote-code = "No", data-usage
       certifications (`docs/PERMISSIONS_JUSTIFICATION.md`).
 - [ ] Screenshots at 1280×800 uploaded, promo tile optional.
-- [ ] Both test suites pass (44 unit + 60 DOM/security assertions).
+- [x] Both test suites pass (100 unit + 149 DOM/security assertions).

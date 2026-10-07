@@ -215,6 +215,6 @@ Expected: `✓ all 44 assertions passed` and `PASS 60`.
 
 ## 12. Reporting a problem
 
-Please open an issue on the project repository or email **{{CONTACT_EMAIL}}** with the
+Please open an issue on the project repository or email **hassanfarooq235@gmail.com** with the
 extension version (`chrome://extensions`) and steps to reproduce. Do not include real
 credentials or tokens in a report.
