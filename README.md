@@ -114,7 +114,7 @@ python3 tools/make_icons.py
 
 ```sh
 cd fo-api-studio
-zip -qr fo-api-studio.zip . -x "tools/*" "docs/*" ".git/*" "fo-api-studio.zip"
+zip -qr fo-api-studio.zip . -x "tools/*" "docs/*" ".git/*" ".gitignore" "fo-api-studio.zip"
 ```
 
 The archive is written inside the project (and excludes itself): `manifest.json`, `src/`,
