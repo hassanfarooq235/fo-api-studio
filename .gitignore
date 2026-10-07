@@ -1,0 +1,13 @@
+# Build artifacts — rebuilt with `zip -qr fo-api-studio.zip . -x "tools/*" "docs/*" ".git/*" "fo-api-studio.zip"`
+fo-api-studio.zip
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Editor / tooling
+.vscode/
+.idea/
+node_modules/

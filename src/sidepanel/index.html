@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F&O API Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="env-pill" title="Active environment">
+    <span id="envDot" class="dot dot-idle"></span>
+    <select id="envSelect" aria-label="Active environment"></select>
+  </div>
+  <button id="btnRefresh" class="icon-btn" title="Reload environments" type="button">&#10227;</button>
+  <span class="flex"></span>
+  <button id="permChip" class="chip hidden" type="button" role="status"></button>
+</header>
+
+<nav class="nav" id="paneNav" aria-label="Sections">
+  <button class="nav-btn active" data-pane="build" type="button">Build</button>
+  <button class="nav-btn" data-pane="envs" type="button">Environments</button>
+  <button class="nav-btn" data-pane="collections" type="button">Collections</button>
+  <button class="nav-btn" data-pane="history" type="button">History</button>
+  <button class="nav-btn" data-pane="settings" type="button">Settings</button>
+</nav>
+
+<main>
+
+  <!-- ==================== BUILD ==================== -->
+  <section id="pane-build" class="pane active">
+
+    <div class="seg" id="kindTabs" role="tablist" aria-label="Request type">
+      <button class="seg-btn active" data-kind="odata" type="button">OData</button>
+      <button class="seg-btn" data-kind="service" type="button">Custom service</button>
+      <button class="seg-btn" data-kind="raw" type="button">Raw</button>
+    </div>
+
+    <!-- OData helpers -->
+    <div class="kindbox" id="kind-odata">
+      <label class="lbl" for="odEntity">Entity set <span class="hint">from /data/$metadata</span></label>
+      <div class="row">
+        <input id="odEntity" list="odEntityList" placeholder="CustomersV3" autocomplete="off" spellcheck="false">
+        <datalist id="odEntityList"></datalist>
+        <button id="odLoadMeta" class="btn btn-sm" type="button">Load</button>
+      </div>
+      <div class="row wrap">
+        <button id="odMakeGet" class="btn btn-sm" type="button">GET collection</button>
+        <button id="odMakeKey" class="btn btn-sm" type="button">By key&hellip;</button>
+        <button id="odMakeBody" class="btn btn-sm" type="button">Body from entity</button>
+      </div>
+      <div class="row">
+        <select id="odOperation" aria-label="Action or function">
+          <option value="">&mdash; actions &amp; functions (Load metadata) &mdash;</option>
+        </select>
+        <button id="odMakeOp" class="btn btn-sm" type="button">Build call</button>
+      </div>
+      <p id="odOpInfo" class="hint"></p>
+      <div id="odKeyBox" class="card hidden"></div>
+      <p id="odMetaInfo" class="hint"></p>
+    </div>
+
+    <!-- Custom service helpers -->
+    <div class="kindbox hidden" id="kind-service">
+      <div class="grid2">
+        <label class="lbl">Service group<input id="svGroup" placeholder="MyServiceGroup" autocomplete="off" spellcheck="false"></label>
+        <label class="lbl">Service (WSDL name)<input id="svService" placeholder="MyService" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <label class="lbl" for="svOperation">Operation</label>
+      <div class="row">
+        <select id="svOperation"><option value="">— fetch the contract first —</option></select>
+        <button id="svFetch" class="btn btn-sm" type="button">Fetch WSDL</button>
+      </div>
+      <div class="row wrap">
+        <label class="inline"><input type="checkbox" id="svTrim"> trim leading “_” in keys</label>
+        <button id="svMakeBody" class="btn btn-sm" type="button">Body from contract</button>
+        <button id="svMakeSoap" class="btn btn-sm" type="button">SOAP envelope</button>
+      </div>
+      <p id="svInfo" class="hint"></p>
+    </div>
+
+    <div class="kindbox hidden" id="kind-raw">
+      <p class="hint">Any HTTP endpoint. Paste a full URL — SOAP envelopes, Data Management package calls
+        (<code>/api/data/...</code>) or any other REST service. Use <code>&#123;&#123;variable&#125;&#125;</code> anywhere.</p>
+    </div>
+
+    <!-- Request line -->
+    <div class="reqline">
+      <select id="method" aria-label="HTTP method">
+        <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option>
+        <option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+      </select>
+      <input id="url" placeholder="{{$baseUrl}}/data/CustomersV3" spellcheck="false" autocomplete="off">
+    </div>
+
+    <div class="row actions">
+      <button id="btnSend" class="btn btn-primary" type="button" title="Send (⌘/Ctrl + Enter)" aria-keyshortcuts="Meta+Enter Control+Enter">Send</button>
+      <button id="btnSaveReq" class="btn" type="button">Save</button>
+      <button id="btnCurl" class="btn" type="button" title="Copy as cURL (token replaced by a placeholder)">cURL</button>
+      <button id="btnCurlImportOpen" class="btn" type="button" title="Import a curl command">Import</button>
+      <span id="sendHint" class="hint"></span>
+    </div>
+
+    <div id="curlBox" class="card hidden">
+      <h3>Import cURL</h3>
+      <textarea id="curlText" rows="5" spellcheck="false"
+        placeholder="curl 'https://contoso.operations.dynamics.com/data/CustomersV3' -H 'Accept: application/json'"></textarea>
+      <div class="row wrap">
+        <button id="btnCurlImport" class="btn btn-primary btn-sm" type="button">Import</button>
+        <button id="btnCurlCancel" class="btn btn-sm ghost" type="button">Cancel</button>
+      </div>
+      <p class="hint" id="curlErr"></p>
+      <p class="hint">Method, URL, params, headers and body are copied into the builder. Credentials on the
+        command line (<code>-u</code>, <code>-b</code>) are dropped — use the Auth tab.</p>
+    </div>
+
+    <div class="seg seg-sm" id="reqTabs" role="tablist" aria-label="Request options">
+      <button class="seg-btn active" data-req="params" type="button">Params</button>
+      <button class="seg-btn" data-req="headers" type="button">Headers</button>
+      <button class="seg-btn" data-req="body" type="button">Body</button>
+      <button class="seg-btn" data-req="auth" type="button">Auth</button>
+    </div>
+
+    <div class="reqpane active" id="req-params">
+      <div class="kv" id="kvParams"></div>
+      <button class="btn btn-sm ghost" data-add-kv="kvParams" type="button">+ parameter</button>
+      <div class="hint chips" id="paramHints"></div>
+    </div>
+
+    <div class="reqpane" id="req-headers">
+      <div class="kv" id="kvHeaders"></div>
+      <button class="btn btn-sm ghost" data-add-kv="kvHeaders" type="button">+ header</button>
+      <p class="hint">The Authorization header is added automatically from the active environment.</p>
+    </div>
+
+    <div class="reqpane" id="req-body">
+      <div class="row">
+        <select id="bodyMode" aria-label="Body type">
+          <option value="none">No body</option>
+          <option value="json">JSON</option>
+          <option value="xml">XML</option>
+          <option value="text">Text</option>
+        </select>
+        <button id="btnFormatBody" class="btn btn-sm" type="button">Format</button>
+        <button id="btnClearBody" class="btn btn-sm" type="button">Clear</button>
+      </div>
+      <textarea id="body" rows="9" spellcheck="false" placeholder='{ "_request": { … } }'></textarea>
+    </div>
+
+    <div class="reqpane" id="req-auth">
+      <div id="authSummary" class="card">No environment selected.</div>
+      <div class="row wrap">
+        <button id="btnSignIn" class="btn btn-sm" type="button">Sign in</button>
+        <button id="btnGetToken" class="btn btn-sm" type="button">Get app token</button>
+        <button id="btnRevealToken" class="btn btn-sm" type="button">Reveal token</button>
+        <button id="btnInspect" class="btn btn-sm" type="button">Inspect claims</button>
+      </div>
+      <pre id="authOut" class="codeblock"></pre>
+    </div>
+
+    <!-- Response -->
+    <div class="resbar">
+      <strong>Response</strong>
+      <span id="resMeta" class="hint"></span>
+      <span class="flex"></span>
+      <button id="btnCopyRes" class="btn btn-sm ghost" type="button">Copy</button>
+    </div>
+    <div class="seg seg-sm" id="resTabs" role="tablist" aria-label="Response views">
+      <button class="seg-btn active" data-res="pretty" type="button">Pretty</button>
+      <button class="seg-btn" data-res="table" type="button">Table</button>
+      <button class="seg-btn" data-res="headers" type="button">Headers</button>
+      <button class="seg-btn" data-res="raw" type="button">Raw</button>
+    </div>
+    <div id="resBody" class="resbody"><p class="hint">Send a request to see its response here.</p></div>
+  </section>
+
+  <!-- ==================== ENVIRONMENTS ==================== -->
+  <section id="pane-envs" class="pane">
+    <div class="row wrap">
+      <button id="btnNewEnv" class="btn btn-primary btn-sm" type="button">+ New environment</button>
+      <button id="btnCaptureTab" class="btn btn-sm" type="button" title="Fill URL and company from the active D365 tab">Capture from tab</button>
+      <button id="btnSetup" class="btn btn-sm" type="button" title="Step-by-step authentication setup for the active environment">Guided setup</button>
+    </div>
+    <div id="setupBox" class="card hidden"></div>
+    <div id="envCards" class="list"></div>
+
+    <form id="envForm" class="card form hidden" autocomplete="off">
+      <h3 id="envFormTitle">New environment</h3>
+
+      <label class="lbl">Name<input id="efName" required placeholder="UAT"></label>
+      <label class="lbl">Base URL<input id="efUrl" required placeholder="https://contoso-uat.operations.dynamics.com" spellcheck="false"></label>
+      <label class="lbl">Company (legal entity)<input id="efCompany" placeholder="USMF" spellcheck="false"></label>
+
+      <label class="lbl" for="efAuthMode">Authentication</label>
+      <select id="efAuthMode">
+        <option value="session">Browser session — zero configuration</option>
+        <option value="interactive">Entra ID — interactive sign-in (PKCE, no secret)</option>
+        <option value="clientCredentials">Entra ID — application (client secret)</option>
+        <option value="manual">Bearer token — paste</option>
+      </select>
+
+      <div id="grpTenant" class="authgrp hidden">
+        <label class="lbl">Tenant<input id="efTenant" placeholder="contoso.onmicrosoft.com or GUID" spellcheck="false"></label>
+        <label class="lbl">Client ID (application ID)<input id="efClientId" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false"></label>
+        <label class="lbl">Scope <span class="hint">leave blank for the F&amp;O default</span><input id="efScope" placeholder="https://…dynamics.com/.default" spellcheck="false"></label>
+      </div>
+      <div id="grpSecret" class="authgrp hidden">
+        <label class="lbl">Client secret <span class="hint">stored locally, never exported</span>
+          <input id="efClientSecret" type="password" placeholder="leave blank to keep the saved secret" autocomplete="new-password"></label>
+      </div>
+      <div id="grpToken" class="authgrp hidden">
+        <label class="lbl">Bearer token <span class="hint">stored locally, never exported</span>
+          <input id="efToken" type="password" placeholder="leave blank to keep the saved token" autocomplete="new-password"></label>
+      </div>
+
+      <details class="vars">
+        <summary>Environment variables</summary>
+        <div class="kv" id="kvEnvVars"></div>
+        <button class="btn btn-sm ghost" data-add-kv="kvEnvVars" type="button">+ variable</button>
+        <p class="hint">Use <code>&#123;&#123;name&#125;&#125;</code> in URL, headers and body. Built-ins:
+          <code>&#123;&#123;$baseUrl&#125;&#125;</code> <code>&#123;&#123;$company&#125;&#125;</code>
+          <code>&#123;&#123;$guid&#125;&#125;</code> <code>&#123;&#123;$timestamp&#125;&#125;</code></p>
+      </details>
+
+      <div class="row wrap">
+        <button class="btn btn-primary btn-sm" id="btnSaveEnv" type="button">Save</button>
+        <button class="btn btn-sm" id="btnTestEnv" type="button">Test connection</button>
+        <button class="btn btn-sm danger" id="btnDeleteEnv" type="button">Delete</button>
+        <button class="btn btn-sm ghost" id="btnCancelEnv" type="button">Cancel</button>
+      </div>
+      <p id="envFormMsg" class="hint"></p>
+    </form>
+  </section>
+
+  <!-- ==================== COLLECTIONS ==================== -->
+  <section id="pane-collections" class="pane">
+    <div class="row">
+      <input id="colNewName" placeholder="Collection name">
+      <button id="btnNewCol" class="btn btn-sm" type="button">New</button>
+    </div>
+    <div id="colList" class="list"></div>
+
+    <div id="saveBox" class="card hidden">
+      <h3>Save request</h3>
+      <label class="lbl">Request name<input id="saveName" placeholder="List customers"></label>
+      <label class="lbl">Collection<select id="saveCol"></select></label>
+      <div class="row wrap">
+        <button id="btnSaveConfirm" class="btn btn-primary btn-sm" type="button">Save</button>
+        <button id="btnSaveCancel" class="btn btn-sm ghost" type="button">Cancel</button>
+      </div>
+      <p class="hint">Tip: use “+ New” above to create a collection first.</p>
+    </div>
+
+    <p class="hint">Requests saved here keep their method, URL, params, headers, body and request type.</p>
+  </section>
+
+  <!-- ==================== HISTORY ==================== -->
+  <section id="pane-history" class="pane">
+    <div class="row">
+      <button id="btnClearHist" class="btn btn-sm" type="button">Clear history</button>
+      <span id="histInfo" class="hint"></span>
+    </div>
+    <div id="histList" class="list"></div>
+  </section>
+
+  <!-- ==================== SETTINGS ==================== -->
+  <section id="pane-settings" class="pane">
+    <h3>Request defaults</h3>
+    <label class="lbl">Timeout (ms)<input id="setTimeout" type="number" min="1000" max="180000" step="1000"></label>
+    <label class="lbl">History entries to keep<input id="setHist" type="number" min="10" max="500" step="10"></label>
+
+    <h3>Global variables</h3>
+    <div class="kv" id="kvGlobals"></div>
+    <button class="btn btn-sm ghost" data-add-kv="kvGlobals" type="button">+ variable</button>
+
+    <h3>Data</h3>
+    <div class="row wrap">
+      <button id="btnExport" class="btn btn-sm" type="button">Export (JSON)</button>
+      <button id="btnImport" class="btn btn-sm" type="button">Import</button>
+      <input type="file" id="fileImport" accept="application/json,.json" class="hidden">
+    </div>
+    <p class="hint">Export contains environments, variables and collections. <strong>Secrets and tokens are never exported.</strong></p>
+
+    <div class="card">
+      <h4>Privacy &amp; security</h4>
+      <ul class="bullets">
+        <li>No analytics, tracking or remote code.</li>
+        <li>Client secrets and tokens stay in <code>chrome.storage.local</code> on this device.</li>
+        <li>Tokens are attached to requests inside the background process, never in the page.</li>
+        <li>Host access is requested per origin when you need it.</li>
+      </ul>
+      <p class="hint" id="versionInfo"></p>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

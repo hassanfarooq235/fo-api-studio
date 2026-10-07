@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>F&O API Studio — side panel preview</title>
+</head>
+<body>
+<p id="loading" style="font:14px system-ui;padding:16px;color:#64748b">Loading the side panel preview…</p>
+<script type="module">
+/**
+ * DEV-ONLY preview harness: loads the real src/sidepanel/index.html with a
+ * chrome.* shim so the UI can be reviewed in a plain browser tab.
+ */
+const res = await fetch('../src/sidepanel/index.html');
+let html = await res.text();
+
+const wantsReset = new URLSearchParams(location.search).has('reset');
+if (wantsReset) {
+  try {
+    localStorage.removeItem('fo-api-studio.preview');
+  } catch {
+    /* ignore */
+  }
+}
+
+// Inject the shim + rewrite the module URL to an absolute path, and add a
+// <base> so relative CSS/module URLs resolve to the real folder.
+html = html
+  .replace('<head>', '<head>\n<base href="/src/sidepanel/">')
+  .replace(
+    '<script type="module" src="app.js"></' + 'script>',
+    '<script type="module" src="/tools/dev-shim.js"></' + 'script>\n' +
+      '<script type="module" src="/src/sidepanel/app.js"></' + 'script>',
+  );
+
+document.open();
+document.write(html);
+document.close();
+
+// After the rewrite, so document.open() cannot undo it: drop ?reset from the
+// URL, otherwise every reload would wipe the preview's stored state again.
+if (wantsReset) {
+  try {
+    history.replaceState(null, '', location.pathname);
+  } catch {
+    /* ignore */
+  }
+}
+</script>
+</body>
+</html>

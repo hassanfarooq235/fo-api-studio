@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>F&O API Studio — browser tests</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px; }
+  h1 { font-size: 18px; }
+  .pass { color: #15803d; }
+  .fail { color: #b91c1c; }
+  li { margin: 3px 0; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; overflow: auto; font-size: 12px; }
+  #summary { font-weight: 700; margin: 12px 0; padding: 8px 10px; border-radius: 8px; background: #eef2f7; }
+  #summary.ok { background: #dcfce7; color: #166534; }
+  #summary.bad { background: #fee2e2; color: #991b1b; }
+  #sandbox { border: 1px dashed #cbd5e1; padding: 8px; border-radius: 8px; min-height: 60px; }
+</style>
+</head>
+<body>
+<h1>F&O API Studio — browser tests</h1>
+<div id="summary">Running…</div>
+<ul id="results"></ul>
+
+<h2>Sandbox (response renderer output)</h2>
+<div id="sandbox">
+  <div id="resMeta" class="hint"></div>
+  <div id="resBody"></div>
+</div>
+
+<script type="module">
+import { parseWsdl, jsonSkeleton, soapEnvelope, soapHeaders, jsonServiceHeaders } from '../src/sidepanel/modules/webservice.js';
+import { entityDetail, entityBody, keyUrl, collectionUrl, operations, operationsForSet, operationUrl, operationBody } from '../src/sidepanel/modules/odata.js';
+import { highlightJson, escapeHtml } from '../src/sidepanel/modules/ui.js';
+import * as response from '../src/sidepanel/modules/response.js';
+import { sendRequest, resetCsrfCache } from '../src/background/http.js';
+import { originOf, sameOrigin } from '../src/shared/url.js';
+
+const results = [];
+const check = (name, actual, expected) => {
+  const a = JSON.stringify(actual);
+  const e = JSON.stringify(expected);
+  results.push({ name, pass: a === e, expected: e, actual: a });
+};
+const ok = (name, condition, detail = '') => results.push({ name, pass: Boolean(condition), expected: 'truthy', actual: detail || String(condition) });
+
+/* ------------------------------------------------------------------ *
+ * Fixture 1 — an X++-style doc/literal wrapped WSDL
+ * ------------------------------------------------------------------ */
+const WSDL = `<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:s="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://contoso.dynamics.com/services/MyServiceGroup"
+                  targetNamespace="http://contoso.dynamics.com/services/MyServiceGroup">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://contoso.dynamics.com/services/MyServiceGroup">
+      <s:complexType name="MyRequest">
+        <s:sequence>
+          <s:element name="CustAccount" type="s:string"/>
+          <s:element name="Qty" type="s:decimal"/>
+          <s:element name="Blocked" type="s:boolean"/>
+          <s:element name="Line" type="tns:Line" nillable="true"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Line">
+        <s:sequence>
+          <s:element name="ItemId" type="s:string"/>
+          <s:element name="Quantity" type="s:int"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="createCustomer">
+        <s:complexType>
+          <s:sequence>
+            <s:element name="_request" type="tns:MyRequest"/>
+            <s:element name="_holdCodes" type="s:string" minOccurs="0" maxOccurs="unbounded"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="createCustomerResponse">
+        <s:complexType><s:sequence><s:element name="return" type="s:string" nillable="true"/></s:sequence></s:complexType>
+      </s:element>
+      <s:element name="ping"><s:complexType><s:sequence/></s:complexType></s:element>
+      <s:element name="pingResponse"><s:complexType><s:sequence><s:element name="return" type="s:string" nillable="true"/></s:sequence></s:complexType></s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="pingSoapIn"><wsdl:part name="parameters" element="tns:ping"/></wsdl:message>
+  <wsdl:message name="pingSoapOut"><wsdl:part name="parameters" element="tns:pingResponse"/></wsdl:message>
+  <wsdl:message name="createCustomerSoapIn"><wsdl:part name="parameters" element="tns:createCustomer"/></wsdl:message>
+  <wsdl:message name="createCustomerSoapOut"><wsdl:part name="parameters" element="tns:createCustomerResponse"/></wsdl:message>
+  <wsdl:portType name="MyServicePort">
+    <wsdl:operation name="ping">
+      <wsdl:input message="tns:pingSoapIn"/>
+      <wsdl:output message="tns:pingSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="createCustomer">
+      <wsdl:input message="tns:createCustomerSoapIn"/>
+      <wsdl:output message="tns:createCustomerSoapOut"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="MyServiceBinding" type="tns:MyServicePort">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+    <wsdl:operation name="ping"><soap:operation soapAction="" style="document"/></wsdl:operation>
+    <wsdl:operation name="createCustomer"><soap:operation soapAction="http://contoso.dynamics.com/createCustomer" style="document"/></wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="MyService">
+    <wsdl:port name="MyServicePort" binding="tns:MyServiceBinding">
+      <soap:address location="https://contoso.operations.dynamics.com/soap/services/MyService"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>`;
+
+/* ------------------------------------------------------------------ *
+ * Fixture 2 — a minimal /data/$metadata document
+ * ------------------------------------------------------------------ */
+const METADATA = `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="Contoso" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EntityType Name="CustomersV3">
+        <Key>
+          <PropertyRef Name="CustomerAccount"/>
+          <PropertyRef Name="dataAreaId"/>
+        </Key>
+        <Property Name="CustomerAccount" Type="Edm.String" Nullable="false"/>
+        <Property Name="dataAreaId" Type="Edm.String" Nullable="false"/>
+        <Property Name="RecId" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="OrganizationName" Type="Edm.String"/>
+        <Property Name="IsBlocked" Type="Edm.Boolean"/>
+        <Property Name="CreditLimit" Type="Edm.Decimal"/>
+        <Property Name="PartyId" Type="Edm.Guid"/>
+        <NavigationProperty Name="Party" Type="Contoso.PartyV2" ContainsTarget="true"/>
+      </EntityType>
+      <Action Name="IncreaseCreditLimit" IsBound="true">
+        <Parameter Name="bindingParameter" Type="Contoso.CustomersV3"/>
+        <Parameter Name="amount" Type="Edm.Decimal"/>
+        <Parameter Name="notify" Type="Edm.Boolean" IsOptional="true"/>
+        <ReturnType Type="Edm.Boolean"/>
+      </Action>
+      <Function Name="GetBalance" IsBound="true">
+        <Parameter Name="bindingParameter" Type="Contoso.CustomersV3"/>
+        <Parameter Name="asOf" Type="Edm.Date"/>
+        <ReturnType Type="Edm.Decimal"/>
+      </Function>
+      <Function Name="Ping">
+        <Parameter Name="echo" Type="Edm.String" IsOptional="true"/>
+        <ReturnType Type="Edm.String"/>
+      </Function>
+      <Action Name="RecalculateAll">
+        <Parameter Name="company" Type="Edm.String"/>
+      </Action>
+      <EntityContainer Name="EntityContainer">
+        <EntitySet Name="CustomersV3" EntityType="Contoso.CustomersV3"/>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`;
+
+/* ---------------- WSDL / contract tests ---------------- */
+const wsdoc = new DOMParser().parseFromString(WSDL, 'text/xml');
+const contract = parseWsdl(wsdoc);
+
+check('target namespace parsed', contract.targetNs, 'http://contoso.dynamics.com/services/MyServiceGroup');
+check('service name parsed', contract.service, 'MyService');
+check('operations found', contract.operations.map((o) => o.name), ['ping', 'createCustomer']);
+
+const create = contract.operations.find((o) => o.name === 'createCustomer');
+check(
+  'wrapped params become method parameters',
+  create.params.map((p) => p.name),
+  ['_request', '_holdCodes'],
+);
+check('array parameter detected', create.params[1].many, true);
+check(
+  'nested contract children resolved',
+  create.params[0].children.map((c) => c.name),
+  ['CustAccount', 'Qty', 'Blocked', 'Line'],
+);
+check(
+  'nested complex type resolved two levels deep',
+  create.params[0].children[3].children.map((c) => c.name),
+  ['ItemId', 'Quantity'],
+);
+check('soapAction from binding (empty allowed)', create.soapAction, 'http://contoso.dynamics.com/createCustomer');
+check('soapAction empty string preserved', contract.operations.find((o) => o.name === 'ping').soapAction, '');
+
+const ping = contract.operations.find((o) => o.name === 'ping');
+check('empty wrapper => no parameters', ping.params, []);
+
+check(
+  'json skeleton shape',
+  JSON.parse(jsonSkeleton(create)),
+  {
+    _request: { CustAccount: '', Qty: 0, Blocked: false, Line: { ItemId: '', Quantity: 0 } },
+    _holdCodes: [''],
+  },
+);
+check('json skeleton (trimmed keys)', Object.keys(JSON.parse(jsonSkeleton(create, { trim: true }))), ['request', 'holdCodes']);
+check('json skeleton for no-param operation', JSON.parse(jsonSkeleton(ping)), {});
+
+const envelope = soapEnvelope(create, contract.targetNs);
+ok('envelope declares soap + target namespaces', envelope.includes('xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"') && envelope.includes('xmlns:p="http://contoso.dynamics.com/services/MyServiceGroup"'));
+ok('envelope wraps the operation', envelope.includes('<p:createCustomer>') && envelope.includes('</p:createCustomer>'));
+ok('envelope renders nested contract', envelope.includes('<Line>') && envelope.includes('<ItemId></ItemId>'));
+ok('envelope repeats array items as elements', envelope.includes('<_holdCodes></_holdCodes>\n      <_holdCodes>'));
+ok('envelope closes correctly', envelope.trim().endsWith('</soapenv:Envelope>'));
+check('soap headers', soapHeaders(create), { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '"http://contoso.dynamics.com/createCustomer"' });
+check('json headers', jsonServiceHeaders(), { 'Content-Type': 'application/json', Accept: 'application/json' });
+
+/* ---------------- OData metadata tests ---------------- */
+const mdoc = new DOMParser().parseFromString(METADATA, 'application/xml');
+const detail = entityDetail(mdoc, 'CustomersV3');
+ok('entity detail found', Boolean(detail));
+check('keys', detail.keys, ['CustomerAccount', 'dataAreaId']);
+check('properties', detail.properties.map((p) => p.name), ['CustomerAccount', 'dataAreaId', 'RecId', 'OrganizationName', 'IsBlocked', 'CreditLimit', 'PartyId']);
+check('navigation properties', detail.nav, ['Party']);
+check('unknown entity returns null', entityDetail(mdoc, 'Nope'), null);
+check('collection URL', collectionUrl('CustomersV3'), '{{$baseUrl}}/data/CustomersV3?cross-company=true&$top=25');
+check(
+  'key URL',
+  keyUrl('CustomersV3', detail, { CustomerAccount: '1001', dataAreaId: 'USMF' }),
+  "{{$baseUrl}}/data/CustomersV3(CustomerAccount='1001', dataAreaId='USMF')",
+);
+
+const createBody = JSON.parse(entityBody(detail, 'create'));
+check('create body drops autogenerated keys and nav props', Object.keys(createBody), ['CustomerAccount', 'dataAreaId', 'OrganizationName', 'IsBlocked', 'CreditLimit', 'PartyId']);
+check('create body value types', createBody, {
+  CustomerAccount: '',
+  dataAreaId: '',
+  OrganizationName: '',
+  IsBlocked: false,
+  CreditLimit: 0,
+  PartyId: '',
+});
+check('create body excludes RecId (server-generated)', Object.keys(createBody).includes('RecId'), false);
+check('update body includes keys', Object.keys(JSON.parse(entityBody(detail, 'update'))).includes('RecId'), true);
+
+/* ---------------- actions & functions ($metadata) ---------------- */
+const ops = operations(mdoc);
+check('operations found', ops.map((o) => `${o.kind}:${o.name}`), [
+  'action:IncreaseCreditLimit',
+  'action:RecalculateAll',
+  'function:GetBalance',
+  'function:Ping',
+]);
+
+const forSet = operationsForSet(mdoc, 'CustomersV3');
+check('bound to the entity set', forSet.bound.map((o) => o.name), ['IncreaseCreditLimit', 'GetBalance']);
+check('unbound operations listed separately', forSet.unbound.map((o) => o.name), ['RecalculateAll', 'Ping']);
+check('operations for an unknown set', operationsForSet(mdoc, 'Nope').bound, []);
+check('operations without a doc', operations(null), []);
+
+const credit = ops.find((o) => o.name === 'IncreaseCreditLimit');
+check('binding parameter is not a caller parameter', credit.params.map((p) => p.name), ['amount', 'notify']);
+check('binding type captured', credit.bindingType, 'Contoso.CustomersV3');
+check('return type captured', credit.returns, 'Edm.Boolean');
+
+const boundActionUrl = operationUrl(credit, {
+  setName: 'CustomersV3',
+  detail,
+  keyValues: { CustomerAccount: '1001', dataAreaId: 'USMF' },
+});
+check(
+  'bound action URL',
+  boundActionUrl,
+  "{{$baseUrl}}/data/CustomersV3(CustomerAccount='1001', dataAreaId='USMF')/IncreaseCreditLimit",
+);
+
+let boundWithoutKey = null;
+try {
+  operationUrl(credit, { setName: 'CustomersV3', detail, keyValues: {} });
+} catch (e) {
+  boundWithoutKey = e.message;
+}
+ok('bound action without a key refuses to build', /entity key/.test(boundWithoutKey || ''), boundWithoutKey);
+
+const actionBody = JSON.parse(operationBody(credit));
+check('action body has one placeholder per parameter', actionBody, { amount: 0, notify: false });
+
+const pingOp = ops.find((o) => o.name === 'Ping');
+check('unbound function URL with no args', operationUrl(pingOp), '{{$baseUrl}}/data/Ping');
+check(
+  'unbound function URL with args',
+  operationUrl(pingOp, { paramValues: { echo: "it's fine" } }),
+  "{{$baseUrl}}/data/Ping(echo='it''s fine')",
+);
+
+const balance = ops.find((o) => o.name === 'GetBalance');
+check(
+  'bound function keeps the key and appends args',
+  operationUrl(balance, {
+    setName: 'CustomersV3',
+    detail,
+    keyValues: { CustomerAccount: '1001', dataAreaId: 'USMF' },
+    paramValues: { asOf: '2026-01-01' },
+  }),
+  "{{$baseUrl}}/data/CustomersV3(CustomerAccount='1001', dataAreaId='USMF')/GetBalance(asOf='2026-01-01')",
+);
+check('blank function args are omitted', operationUrl(balance, {
+  setName: 'CustomersV3',
+  detail,
+  keyValues: { CustomerAccount: '1001', dataAreaId: 'USMF' },
+  paramValues: { asOf: '' },
+}), "{{$baseUrl}}/data/CustomersV3(CustomerAccount='1001', dataAreaId='USMF')/GetBalance");
+
+const recalc = ops.find((o) => o.name === 'RecalculateAll');
+check('unbound action body', JSON.parse(operationBody(recalc)), { company: '' });
+
+/* ---------------- response renderer tests ---------------- */
+response.configure({
+  body: document.getElementById('resBody'),
+  meta: document.getElementById('resMeta'),
+  grantAccess: async () => true,
+});
+
+response.setResponse({
+  ok: true,
+  response: {
+    status: 200,
+    statusText: 'OK',
+    headers: { 'content-type': 'application/json; odata.metadata=minimal' },
+    bodyText: JSON.stringify({ value: [{ CustomerAccount: '1001', OrganizationName: 'Contoso' }, { CustomerAccount: '1002', OrganizationName: 'Fabrikam' }] }),
+    timeMs: 240,
+    sizeBytes: 120,
+    finalUrl: 'https://contoso.operations.dynamics.com/data/CustomersV3',
+  },
+});
+ok('pretty view shows status badge', document.getElementById('resBody').innerHTML.includes('badge-2xx'));
+ok('pretty view highlights keys', document.getElementById('resBody').innerHTML.includes('tok-key'));
+
+response.setView('table');
+ok('table view renders rows', document.getElementById('resBody').querySelectorAll('tbody tr').length >= 2, `${document.getElementById('resBody').querySelectorAll('tbody tr').length} rows`);
+ok('table view renders OData columns', document.getElementById('resBody').innerHTML.includes('CustomerAccount'));
+
+response.setView('headers');
+ok('headers view renders', document.getElementById('resBody').innerHTML.includes('content-type'));
+
+response.setView('raw');
+ok('raw view shows plain text', document.getElementById('resBody').textContent.includes('"1001"'));
+
+// XSS safety: a hostile JSON string must never become markup
+response.setView('pretty');
+response.setResponse({
+  ok: true,
+  response: {
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    bodyText: JSON.stringify({ evil: '<img src=x onerror=alert(1)>', tag: '</pre><' + 'script>alert(2)</' + 'script>' }),
+    timeMs: 5,
+    sizeBytes: 60,
+    finalUrl: 'https://x.example.com/',
+  },
+});
+const html = document.getElementById('resBody').innerHTML;
+ok('hostile JSON is escaped in pretty view', !html.includes('<img src=x') && !html.includes('<script>'), html.slice(0, 120));
+ok('highlightJson escapes angle brackets', !highlightJson('"</pre><b>"').includes('<b>'), highlightJson('"</pre><b>"'));
+check('escapeHtml escapes markup', escapeHtml('<a href="x">&'), '&lt;a href=&quot;x&quot;&gt;&amp;');
+
+// error view + permission action
+response.setResponse({ ok: false, error: { kind: 'permission', message: 'no access to https://x.example.com', origin: 'https://x.example.com', hasPermission: false } });
+ok('error view explains the failure', document.getElementById('resBody').textContent.includes('no access to https://x.example.com'));
+ok('error view offers a grant button', Boolean(document.getElementById('resBody').querySelector('#btnGrant')));
+
+response.setResponse({ ok: false, error: { kind: 'auth', message: 'Sign-in required.' } });
+ok('auth error renders guidance', document.getElementById('resBody').textContent.includes('Auth tab'));
+
+/* ---------------- background HTTP: token scoping (security) ----------------
+ * The background owns bearer tokens, so this asserts they can only ever be
+ * attached to the environment's own origin. fetch() is stubbed: no traffic
+ * leaves the page, and every outgoing spec is captured for inspection.       */
+const fetchCalls = [];
+
+const makeHeaders = (map = {}) => ({
+  get: (name) => {
+    const key = Object.keys(map).find((h) => h.toLowerCase() === String(name).toLowerCase());
+    return key ? map[key] : null;
+  },
+  forEach: (fn) => Object.entries(map).forEach(([k, v]) => fn(v, k)),
+});
+
+const fakeRes = (status, body, headerMap = {}) => ({
+  status,
+  statusText: status === 200 ? 'OK' : status === 403 ? 'Forbidden' : 'Error',
+  url: '',
+  redirected: false,
+  headers: makeHeaders(headerMap),
+  text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+  body: null,
+});
+
+let handshakeSeq = 0;
+const writeAttempts = new Map(); // url -> number of writes seen
+
+globalThis.fetch = async (url, init) => {
+  const reqHeaders = { ...(init.headers || {}) };
+  // Snapshot: http.js deliberately mutates one headers object between retries.
+  fetchCalls.push({ url: String(url), init: { ...init, headers: reqHeaders } });
+
+  const method = String(init.method || 'GET').toUpperCase();
+  const reqCsrf = reqHeaders['x-csrf-token'];
+
+  // anti-CSRF probe: GET + "x-csrf-token: fetch" -> a token in the response
+  if (method === 'GET' && String(reqCsrf).toLowerCase() === 'fetch') {
+    handshakeSeq += 1;
+    return fakeRes(200, { value: [] }, { 'x-csrf-token': `srv-token-${handshakeSeq}` });
+  }
+
+  // refresh.example.com: reject the first write, accept the retried one
+  if (String(url).startsWith('https://refresh.example.com')) {
+    const n = (writeAttempts.get(String(url)) || 0) + 1;
+    writeAttempts.set(String(url), n);
+    if (n === 1) return fakeRes(403, { error: { message: 'Anti-CSRF token rejected.' } });
+  }
+
+  return fakeRes(200, { value: [] });
+};
+
+const STORED_ENVS = [
+  { id: 'env-manual', name: 'UAT', baseUrl: 'https://contoso.operations.dynamics.com', auth: { mode: 'manual', manualToken: 'tok-abc' } },
+  { id: 'env-session', name: 'Session only', baseUrl: 'https://contoso.operations.dynamics.com', auth: { mode: 'session' } },
+];
+
+globalThis.chrome = {
+  storage: {
+    local: {
+      get: async (key) => (key === 'envs' ? { envs: STORED_ENVS } : {}),
+      set: async () => {},
+      remove: async () => {},
+    },
+  },
+  permissions: { contains: async () => true },
+};
+
+const BASE = 'https://contoso.operations.dynamics.com';
+
+// 1. own origin + bearer mode -> token attached
+const ownRes = await sendRequest({ url: `${BASE}/data/CustomersV3`, method: 'GET', auth: { envId: 'env-manual' } });
+check('own-origin request succeeds', ownRes.ok, true);
+check('bearer token attached on own origin', fetchCalls[0].init.headers.Authorization, 'Bearer tok-abc');
+
+// 2. different origin -> no request, no token, actionable error
+const beforeCross = fetchCalls.length;
+const crossRes = await sendRequest({ url: 'https://evil.example.com/data/CustomersV3', method: 'GET', auth: { envId: 'env-manual' } });
+check('cross-origin request is not even sent', fetchCalls.length, beforeCross);
+check('cross-origin request fails', crossRes.ok, false);
+check('cross-origin failure is an auth error', crossRes.error?.kind, 'auth');
+ok('cross-origin error explains the withheld token', /withheld/i.test(crossRes.error?.message || ''), crossRes.error?.message);
+
+// 3. session mode -> cookies only, never a bearer header
+const beforeSess = fetchCalls.length;
+const sessRes = await sendRequest({ url: `${BASE}/data/X`, method: 'GET', auth: { envId: 'env-session' } });
+check('session mode succeeds', sessRes.ok, true);
+check('session mode uses cookies', fetchCalls[beforeSess].init.credentials, 'include');
+ok('session mode sends no Authorization header', !('Authorization' in fetchCalls[beforeSess].init.headers), JSON.stringify(fetchCalls[beforeSess].init.headers));
+
+// 4. an explicit Authorization header typed by the user is the escape hatch
+const beforeHdr = fetchCalls.length;
+const hdrRes = await sendRequest({ url: 'https://other.example.com/api', method: 'GET', headers: { Authorization: 'Bearer mine' }, auth: { envId: 'env-manual' } });
+check('explicit Authorization header allowed cross-origin', hdrRes.ok, true);
+check('explicit header reaches fetch', fetchCalls[beforeHdr].init.headers.Authorization, 'Bearer mine');
+
+// 5. non-http(s) schemes are refused outright
+const badScheme = await sendRequest({ url: 'ftp://contoso.operations.dynamics.com/x', method: 'GET', auth: { envId: 'env-manual' } });
+check('non-http scheme refused', badScheme.error?.kind, 'input');
+check('refused scheme sent nothing', fetchCalls.length, beforeHdr + 1);
+
+// 6. shared origin helper
+check('originOf bare host', originOf('contoso.operations.dynamics.com'), 'https://contoso.operations.dynamics.com');
+check('originOf junk rejected', originOf('not a url !!'), '');
+check('sameOrigin across paths', sameOrigin('https://contoso.operations.dynamics.com/data', 'contoso.operations.dynamics.com'), true);
+check('sameOrigin across hosts', sameOrigin('https://a.example.com', 'https://b.example.com'), false);
+
+/* ---------------- background HTTP: anti-CSRF handshake ----------------
+ * Cookie-authenticated writes must present F&O's anti-forgery token. The
+ * probe is one GET (x-csrf-token: fetch); the token is cached per origin and
+ * refetched exactly once when the server rejects it.                       */
+resetCsrfCache();
+
+// 7. session-mode GET needs no handshake
+const beforeGet = fetchCalls.length;
+await sendRequest({ url: 'https://contoso.operations.dynamics.com/data/CustomersV3', method: 'GET', auth: { envId: 'env-session' } });
+check('session GET sends no probe', fetchCalls.length, beforeGet + 1);
+
+// 8. session-mode POST: probe first, then the write carrying the token
+const beforePost = fetchCalls.length;
+const postRes = await sendRequest({
+  url: 'https://csrf.example.com/data/Things',
+  method: 'POST',
+  body: '{"Name":"demo"}',
+  auth: { envId: 'env-session' },
+});
+check('session POST succeeds', postRes.ok, true);
+check('response reports a handshake', postRes.response?.csrf, true);
+check('probe is a GET to the service root', `${fetchCalls[beforePost].init.method} ${fetchCalls[beforePost].url}`, 'GET https://csrf.example.com/data/');
+check('probe asks for the token', fetchCalls[beforePost].init.headers['x-csrf-token'], 'fetch');
+check('write follows the probe', fetchCalls[beforePost + 1].init.method, 'POST');
+check('write carries the token', fetchCalls[beforePost + 1].init.headers['x-csrf-token'], 'srv-token-1');
+check('probe and write both send cookies', `${fetchCalls[beforePost].init.credentials}+${fetchCalls[beforePost + 1].init.credentials}`, 'include+include');
+check('two requests total', fetchCalls.length, beforePost + 2);
+
+// 9. second write on the same origin reuses the cached token
+const beforeCached = fetchCalls.length;
+await sendRequest({ url: 'https://csrf.example.com/data/Things?$top=5', method: 'POST', body: '{}', auth: { envId: 'env-session' } });
+check('cached token skips the probe', fetchCalls.length, beforeCached + 1);
+check('cached token is reused', fetchCalls[beforeCached].init.headers['x-csrf-token'], 'srv-token-1');
+check('cached probe URL untouched', fetchCalls[beforeCached].url, 'https://csrf.example.com/data/Things?$top=5');
+
+// 10. bearer mode never performs the handshake
+const beforeBearer = fetchCalls.length;
+const bearerPost = await sendRequest({
+  url: 'https://contoso.operations.dynamics.com/data/Things',
+  method: 'POST',
+  body: '{"Name":"demo"}',
+  auth: { envId: 'env-manual' },
+});
+check('bearer POST succeeds', bearerPost.ok, true);
+check('bearer POST sends no probe', fetchCalls.length, beforeBearer + 1);
+check('bearer POST has no csrf header', fetchCalls[beforeBearer].init.headers['x-csrf-token'], undefined);
+check('bearer POST is not marked csrf', bearerPost.response?.csrf, false);
+
+// 11. a rejected token is refetched and the write retried exactly once
+const beforeRefresh = fetchCalls.length;
+const refreshRes = await sendRequest({ url: 'https://refresh.example.com/data/Orders', method: 'POST', body: '{}', auth: { envId: 'env-session' } });
+check('retry ends in success', refreshRes.ok, true);
+check('probe, write(403), probe, write', fetchCalls.length, beforeRefresh + 4);
+check('first attempt was rejected', fetchCalls[beforeRefresh + 1].init.method, 'POST');
+check('a second probe was made', fetchCalls[beforeRefresh + 2].init.headers['x-csrf-token'], 'fetch');
+const firstToken = fetchCalls[beforeRefresh + 1].init.headers['x-csrf-token'];
+const retryToken = fetchCalls[beforeRefresh + 3].init.headers['x-csrf-token'];
+ok('retry carries a fresh token', Boolean(firstToken) && retryToken !== firstToken, `${firstToken} -> ${retryToken}`);
+check('retry status is 200', refreshRes.response?.status, 200);
+
+/* ---------------- response diagnostics ---------------- */
+const odataErr = JSON.stringify({ error: { code: 'AccessDenied', message: 'You do not have permission to read this entity.' } });
+
+const d403 = response.diagnose({ status: 403, statusText: 'Forbidden', bodyText: odataErr });
+check('403 title', d403?.title, 'Not authorized');
+check('403 kind', d403?.kind, 'error');
+ok('403 surfaces the server message', /You do not have permission to read this entity\./.test(d403?.message || ''), d403?.message);
+check('403 keeps the OData error code', (d403?.message || '').split('\n')[0], 'AccessDenied');
+ok('403 advice mentions the Entra ACL', /Microsoft Entra applications/.test(d403?.advice || ''), d403?.advice);
+
+const d412 = response.diagnose({ status: 412, statusText: 'Precondition Failed', bodyText: '' });
+ok('412 advice mentions If-Match', /If-Match/.test(d412?.advice || ''), d412?.advice);
+
+const soapFault = '<?xml version="1.0"?><s:Envelope><s:Body><s:Fault><faultcode>s:Client</faultcode><faultstring>Sales order 0001 does not exist</faultstring></s:Fault></s:Body></s:Envelope>';
+check('SOAP faultstring decoded', response.diagnose({ status: 500, statusText: 'Internal Server Error', bodyText: soapFault })?.message, 'Sales order 0001 does not exist');
+
+check('success has no diagnosis', response.diagnose({ status: 200, statusText: 'OK', bodyText: odataErr }), null);
+
+const html401 = response.diagnose({ status: 401, statusText: 'Unauthorized', bodyText: '<!doctype html><html><body>Sign in</body></html>' });
+check('HTML on failure names the problem', html401?.title, 'HTML instead of data');
+check('HTML on failure is an error', html401?.kind, 'error');
+const html200 = response.diagnose({ status: 200, statusText: 'OK', bodyText: '<html><body>F&O web UI</body></html>' });
+check('HTML on success is a warning', html200?.kind, 'warn');
+
+// rendered output: the guidance appears and hostile server text stays text
+response.setView('pretty');
+response.setResponse({
+  ok: true,
+  response: {
+    status: 403,
+    statusText: 'Forbidden',
+    headers: {},
+    bodyText: JSON.stringify({ error: { message: '<img src=x onerror=alert(1)>' } }),
+    timeMs: 12,
+    sizeBytes: 60,
+    finalUrl: 'https://contoso.operations.dynamics.com/data/CustomersV3',
+    redirected: false,
+  },
+});
+const diagTitle = document.querySelector('#resBody .diag-title');
+ok('failure guidance is rendered', Boolean(diagTitle) && diagTitle.textContent.includes('Not authorized'), diagTitle?.textContent || 'missing');
+check('hostile server text is not markup', document.querySelectorAll('#resBody .diag-msg img').length, 0);
+ok('hostile server text is visible as text', document.querySelector('#resBody .diag-msg')?.textContent.includes('<img src=x'), document.querySelector('#resBody .diag-msg')?.textContent);
+response.setResponse(null);
+
+/* ---------------- XML pretty-printing ----------------
+ * Regression: the old splitter cut on `>…<` boundaries, which put every `<`
+ * and `>` on a line of its own and garbled SOAP responses. */
+const SOAP_RES = [
+  '<?xml version="1.0" encoding="utf-8"?>',
+  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">',
+  '  <soapenv:Body>',
+  '    <createCustomerResponse xmlns="http://contoso.dynamics.com/services/MyServiceGroup">',
+  '      <return>CUST-0001</return>',
+  '    </createCustomerResponse>',
+  '  </soapenv:Body>',
+  '</soapenv:Envelope>',
+].join('\n');
+const prettySoap = response.prettyXml(SOAP_RES);
+const soapLines = prettySoap.split('\n');
+check('xml: declaration kept on one line', soapLines[0], '<?xml version="1.0" encoding="utf-8"?>');
+ok('xml: open tag keeps its brackets and attributes', soapLines[1] === '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">', soapLines[1]);
+check('xml: child indented one level', soapLines[2], '  <soapenv:Body>');
+check('xml: nested child indented two levels', soapLines[3], '    <createCustomerResponse xmlns="http://contoso.dynamics.com/services/MyServiceGroup">');
+ok('xml: scalar child stays inline with its tags', soapLines[4].includes('      <return>CUST-0001</return>'), soapLines[4]);
+ok('xml: depth returns to zero', prettySoap.trim().endsWith('</soapenv:Envelope>'), soapLines[soapLines.length - 1]);
+ok('xml: no orphan brackets', !soapLines.some((l) => l.trim() === '<' || l.trim() === '>'), JSON.stringify(soapLines));
+check('xml: whitespace-insensitive round trip', prettySoap.replace(/\s+/g, ''), SOAP_RES.replace(/\s+/g, ''));
+
+/* ---------------- response paging ---------------- */
+let nextCalls = 0;
+response.configure({
+  body: document.getElementById('resBody'),
+  meta: document.getElementById('resMeta'),
+  grantAccess: async () => true,
+  nextPage: () => {
+    nextCalls += 1;
+  },
+});
+
+const resPage = (bodyObj) => ({
+  ok: true,
+  response: {
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    timeMs: 9,
+    sizeBytes: 40,
+    finalUrl: 'https://contoso.operations.dynamics.com/data/Things',
+    redirected: false,
+    bodyText: JSON.stringify(bodyObj),
+  },
+});
+
+const pageOne = resPage({
+  '@odata.context': '#Things',
+  '@odata.nextLink': 'https://contoso.operations.dynamics.com/data/Things?$skiptoken=abc',
+  value: [
+    { Id: 1, Name: 'a' },
+    { Id: 2, Name: 'b' },
+  ],
+});
+
+response.setView('table');
+response.setResponse(pageOne);
+check('continuation link detected', response.nextPageUrl(), 'https://contoso.operations.dynamics.com/data/Things?$skiptoken=abc');
+ok('next-page control rendered', Boolean(document.querySelector('#resNextPage')), 'missing');
+document.querySelector('#resNextPage').click();
+check('next-page control fires the callback', nextCalls, 1);
+check('page 1 rows shown', document.querySelectorAll('#resBody tbody tr').length, 2);
+check('no paging badge until page 2', /pages/.test(document.querySelector('.meta-badges')?.textContent || ''), false);
+
+response.setResponse(resPage({ value: [{ Id: 3, Name: 'c' }] }), { append: true });
+check('rows accumulate across pages', document.querySelectorAll('#resBody tbody tr').length, 3);
+check('paging badge counts pages and rows', /2 pages · 3 rows/.test(document.querySelector('.meta-badges')?.textContent || ''), true);
+const combinedCopy = response.currentText();
+ok('copy returns every loaded row', /"Id": 1/.test(combinedCopy) && /"Id": 3/.test(combinedCopy), combinedCopy.slice(0, 100));
+ok('copy stays valid JSON', Array.isArray(JSON.parse(combinedCopy)), typeof combinedCopy);
+check('rows keep page order', JSON.parse(combinedCopy).map((r) => r.Id), [1, 2, 3]);
+
+// a plain response resets the accumulation
+response.setResponse(pageOne);
+check('a fresh response resets paging', document.querySelectorAll('#resBody tbody tr').length, 2);
+check('paging badge cleared', /pages/.test(document.querySelector('.meta-badges')?.textContent || ''), false);
+check('copy falls back to the raw body', response.currentText(), pageOne.response.bodyText);
+
+// no continuation link -> no control
+response.setResponse(resPage({ value: [{ Id: 9 }] }));
+ok('no next-page control without a link', document.querySelector('#resNextPage') === null, 'present');
+
+// row window: a 500-row page renders 200 rows plus a "show more" button
+response.setResponse(resPage({ value: Array.from({ length: 500 }, (_, i) => ({ Id: i })) }));
+check('row window starts at 200', document.querySelectorAll('#resBody tbody tr').length, 200);
+ok('show-more control rendered', Boolean(document.querySelector('#resMoreRows')), 'missing');
+document.querySelector('#resMoreRows').click();
+check('show-more reveals the next window', document.querySelectorAll('#resBody tbody tr').length, 400);
+document.querySelector('#resMoreRows').click();
+check('window reaches the end', document.querySelectorAll('#resBody tbody tr').length, 500);
+ok('control disappears at the end', document.querySelector('#resMoreRows') === null, 'present');
+response.setResponse(null);
+
+/* ---------------- record → request (row actions) ---------------- */
+const rowActions = [];
+response.configure({
+  body: document.getElementById('resBody'),
+  meta: document.getElementById('resMeta'),
+  grantAccess: async () => true,
+  rowAction: (action, row) => rowActions.push({ action, row }),
+});
+
+response.setView('table');
+response.setResponse(resPage({ value: [{ Id: 1, Name: 'a' }, { Id: 2, Name: 'b' }] }));
+check('action column leads the table', document.querySelector('#resBody thead th')?.textContent, 'Row');
+check('two actions per row', document.querySelectorAll('#resBody tbody tr:first-child [data-row-act]').length, 2);
+check(
+  'actions are edit and delete',
+  [...document.querySelectorAll('#resBody tbody tr:first-child [data-row-act]')].map((b) => b.dataset.rowAct),
+  ['edit', 'delete'],
+);
+document.querySelectorAll('#resBody tbody tr:nth-child(2) [data-row-act]')[1].click();
+check('row action fired once', rowActions.length, 1);
+check('the clicked row is passed through', rowActions[0]?.row, { Id: 2, Name: 'b' });
+check('the action name is passed through', rowActions[0]?.action, 'delete');
+
+// without a rowAction callback the column disappears again
+response.configure({
+  body: document.getElementById('resBody'),
+  meta: document.getElementById('resMeta'),
+  grantAccess: async () => true,
+});
+response.setResponse(resPage({ value: [{ Id: 1 }] }));
+check('action column only appears when wired', document.querySelector('#resBody thead th')?.textContent, 'Id');
+response.setResponse(null);
+
+// Rendering budgets: highlighting is skipped past 300 KB, and past 2 MB the
+// body is windowed so a huge payload cannot lock the panel up.
+const makeBody = (minChars) => {
+  const row = { Id: 0, Name: 'n'.repeat(120), Desc: 'd'.repeat(120) };
+  const perRow = JSON.stringify(row).length + 2;
+  const value = Array.from({ length: Math.ceil(minChars / perRow) }, (_, i) => ({ ...row, Id: i }));
+  return JSON.stringify({ value });
+};
+
+response.setView('pretty');
+response.setResponse(resPage(makeBody(400_000)));
+ok('highlighting skipped past its budget', /highlighting skipped/.test(document.querySelector('#resBody')?.textContent || ''), 'not skipped');
+response.setResponse(resPage(makeBody(2_100_000)));
+ok('very large bodies are windowed', /showing the first/.test(document.querySelector('#resBody')?.textContent || ''), 'not windowed');
+ok('windowed render stays under the budget', (document.querySelector('#resBody pre')?.textContent.length || 0) <= 2_000_000, String(document.querySelector('#resBody pre')?.textContent.length));
+response.setResponse(null);
+
+/* ---------------- summary ---------------- */
+const failed = results.filter((r) => !r.pass);
+const list = document.getElementById('results');
+list.innerHTML = results
+  .map(
+    (r) =>
+      `<li class="${r.pass ? 'pass' : 'fail'}">${r.pass ? '✓' : '✗'} ${r.name}` +
+      (r.pass ? '' : `<br><small>expected: ${escapeHtml(r.expected)}<br>actual: ${escapeHtml(r.actual)}</small>`) +
+      '</li>',
+  )
+  .join('');
+
+const summary = document.getElementById('summary');
+summary.textContent = failed.length
+  ? `✗ ${failed.length} FAILED, ${results.length - failed.length} passed`
+  : `✓ all ${results.length} assertions passed`;
+summary.className = failed.length ? 'bad' : 'ok';
+document.title = failed.length ? `FAIL ${failed.length}` : `PASS ${results.length}`;
+</script>
+</body>
+</html>
