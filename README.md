@@ -69,10 +69,21 @@ docs/                    Chrome Web Store submission documents
 `tools/` is **never imported by extension code** and should be excluded from the store ZIP
 (see below).
 
-## Load unpacked
+## Install
+
+**From a release (easiest):** download [`fo-api-studio.zip` from the latest
+release](https://github.com/hassanfarooq235/fo-api-studio/releases/latest) and unzip it.
+
+**From source:**
+
+```sh
+git clone https://github.com/hassanfarooq235/fo-api-studio.git
+```
+
+Then either way:
 
 1. Open `chrome://extensions`, enable **Developer mode**.
-2. **Load unpacked** → select this folder.
+2. **Load unpacked** → select the unzipped folder (or the cloned folder).
 3. Click the toolbar icon — the side panel opens.
 
 **Keyboard:** ⌘/Ctrl + Enter sends the request (while the Build view is active).
