@@ -1,0 +1,104 @@
+name: Bug report
+description: Something doesn't behave as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        > **Safety first:** remove base URLs, hostnames, tokens, cookies, client secrets and
+        > response bodies before submitting. The form asks you to confirm this at the end.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the failure, including any error message shown in the panel.
+      placeholder: "Clicking Send shows 'Blocked by permission check' instead of sending the request."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a fresh panel to the failure.
+      placeholder: |
+        1. Open the side panel
+        2. Create an environment with auth mode "Browser session"
+        3. Build a GET URL for any entity set
+        4. Click Send
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: Shown on chrome://extensions (for example 0.1.0).
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: chrome-version
+    attributes:
+      label: Chrome version
+      description: chrome://version — and the OS you are on.
+      placeholder: "Chrome 141 on macOS 16"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: auth-mode
+    attributes:
+      label: Auth mode
+      options:
+        - Browser session
+        - Entra interactive (PKCE)
+        - Client credentials
+        - Manual bearer token
+        - Not applicable / not reached
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request-kind
+    attributes:
+      label: What kind of request failed?
+      options:
+        - OData (read or write)
+        - JSON custom service
+        - SOAP custom service
+        - Raw HTTP
+        - Metadata / WSDL loading
+        - Auth or permission check
+        - UI / storage / collections
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment shape (optional, redacted)
+      description: Type of environment only — for example "standard F&O sandbox, EU region, no customizations". No URLs.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I have removed all hostnames, tokens, cookies, secrets and response bodies from this report.
+          required: true
+        - label: This is not a security vulnerability (those go to the address in SECURITY.md).
+          required: true

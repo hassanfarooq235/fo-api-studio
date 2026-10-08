@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/hassanfarooq235/fo-api-studio/blob/main/SECURITY.md
+    about: Report security-sensitive findings privately — please don't open a public issue.
+  - name: Privacy policy
+    url: https://hassanfarooq235.github.io/fo-api-studio/privacy-policy.html
+    about: What the extension accesses, where it goes, and what it never collects.
+  - name: Permission justifications
+    url: https://hassanfarooq235.github.io/fo-api-studio/permissions.html
+    about: Why each Chrome permission is requested, and what it is never used for.

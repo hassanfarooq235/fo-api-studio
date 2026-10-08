@@ -118,7 +118,7 @@ zip -qr fo-api-studio.zip . -x "tools/*" "docs/*" ".git/*" ".gitignore" "fo-api-
 ```
 
 The archive is written inside the project (and excludes itself): `manifest.json`, `src/`,
-`_locales/`, `assets/` and `README.md` — no tests, no docs, no screenshots. Upload that ZIP on
+`assets/` and `README.md` — no tests, no docs, no screenshots. Upload that ZIP on
 the [developer dashboard](https://chrome.google.com/webstore/devconsole).
 
 ## Pre-submission checklist
@@ -164,6 +164,17 @@ the [developer dashboard](https://chrome.google.com/webstore/devconsole).
   anonymously or to your token (F&O hides non-public entity sets).
 - **No request scripting/assertions engine** — deliberately out of MVP scope.
 
+## Contributing
+
+Contributions are welcome — read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: it maps the
+codebase and lists the invariants every change must preserve (no remote code, minimal
+permissions, secrets stay in the background, everything server-provided gets escaped). Your
+contributions are licensed under MIT, the same as the rest of the project. Community behaviour
+is governed by the [`Code of Conduct`](CODE_OF_CONDUCT.md).
+
+Found a security issue? Please **don't** open a public issue — see [`SECURITY.md`](SECURITY.md).
+
 ## License
 
-Add a license file before publishing the source repository publicly.
+[MIT](LICENSE) © 2026 hassanfarooq235. You may fork, embed, modify and ship it — keep the
+copyright notice.

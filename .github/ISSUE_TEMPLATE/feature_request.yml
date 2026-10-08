@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature ideas are welcome — especially ones grounded in a real Dynamics 365 F&O
+        workflow you had to do by hand.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The workflow you are trying to perform today, and why the panel falls short.
+      placeholder: "I have to send 40 related creates one at a time, which takes minutes per batch."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would you like to happen?
+      description: The behaviour you imagine, as concretely as you can.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Postman, Insomnia, a script you wrote, doing it by hand…
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - OData request building
+        - JSON / SOAP custom services
+        - Auth modes
+        - Assertions / collection runner
+        - Environments and variables
+        - Collections, history, drafts
+        - Response viewing and export
+        - Performance / batch requests
+        - Documentation and onboarding
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Before you submit
+      options:
+        - label: I understand requests for scripting, `eval`, remote code or broad permissions will be declined — the extension must stay Chrome Web Store compliant.
+          required: true
+        - label: I have not included hostnames, tokens or tenant-specific data.
+          required: true
